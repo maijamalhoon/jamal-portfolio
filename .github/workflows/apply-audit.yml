@@ -16,37 +16,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Reassemble audit script
+      - name: Restore audited project
         shell: bash
         run: |
           set -euo pipefail
-          cat audit-payload/v2/*.part | base64 --decode > /tmp/apply-portfolio-audit.py
-          python -m py_compile /tmp/apply-portfolio-audit.py
-
-      - name: Install asset generators
-        run: python -m pip install --disable-pip-version-check reportlab pillow
-
-      - name: Apply audited source
-        run: python /tmp/apply-portfolio-audit.py
-
-      - name: Create optimized local portrait
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl --fail --location --retry 3 "https://avatars.githubusercontent.com/u/150429791?v=4" --output /tmp/jamal-avatar
-          python - <<'PY'
-          from PIL import Image
-          from pathlib import Path
-          source = Image.open('/tmp/jamal-avatar').convert('RGB')
-          source.thumbnail((900, 900), Image.Resampling.LANCZOS)
-          output = Path('public/jamal-yaqoob.webp')
-          output.parent.mkdir(parents=True, exist_ok=True)
-          source.save(output, 'WEBP', quality=86, method=6)
-          print(f'wrote {output}')
-          PY
-
-      - name: Create deterministic lockfile
-        run: npm install --package-lock-only --ignore-scripts
+          cat audit-payload/archive/*.part | base64 --decode > /tmp/jamal-portfolio-audit.tar.gz
+          echo "5bb4fac80a608b24f4f810bd1c6ff7688cc0c357b30a583afc561c10b6db38b1  /tmp/jamal-portfolio-audit.tar.gz" | sha256sum --check
+          tar -xzf /tmp/jamal-portfolio-audit.tar.gz -C .
 
       - name: Install dependencies
         run: npm ci
