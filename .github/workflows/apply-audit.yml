@@ -1,0 +1,47 @@
+name: Apply Portfolio Audit
+
+on:
+  push:
+    paths:
+      - audit-payload/READY
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Reassemble audit script
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat audit-payload/script/*.part | base64 --decode > /tmp/apply-portfolio-audit.py
+          python -m py_compile /tmp/apply-portfolio-audit.py
+
+      - name: Install PDF generator
+        run: python -m pip install --disable-pip-version-check reportlab
+
+      - name: Apply audited source
+        run: python /tmp/apply-portfolio-audit.py
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify audit
+        run: npm run check
+
+      - name: Commit audited portfolio
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf audit-payload .github/workflows/apply-audit.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat: complete portfolio functionality and production audit"
+          git push
