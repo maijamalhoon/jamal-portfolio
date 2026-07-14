@@ -4,11 +4,9 @@ A production-grade portfolio for **Jamal Yaqoob**, an accounting and finance pro
 
 ## Live website
 
-**Vercel production:** https://jamal-portfolio-jamal-s-projects18.vercel.app/
+**Verified permanent public link:** https://maijamalhoon.github.io/jamal-portfolio/
 
-**GitHub Pages fallback:** https://maijamalhoon.github.io/jamal-portfolio/
-
-Both links are public. The repository is connected to Vercel for automatic production deployments.
+The repository is also connected to the Jamal Portfolio project on Vercel, and successful deployments are created automatically from `main`.
 
 ## What makes it different
 
