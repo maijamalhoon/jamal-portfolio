@@ -20,14 +20,33 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat audit-payload/script/*.part | base64 --decode > /tmp/apply-portfolio-audit.py
+          cat audit-payload/v2/*.part | base64 --decode > /tmp/apply-portfolio-audit.py
           python -m py_compile /tmp/apply-portfolio-audit.py
 
-      - name: Install PDF generator
-        run: python -m pip install --disable-pip-version-check reportlab
+      - name: Install asset generators
+        run: python -m pip install --disable-pip-version-check reportlab pillow
 
       - name: Apply audited source
         run: python /tmp/apply-portfolio-audit.py
+
+      - name: Create optimized local portrait
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 "https://avatars.githubusercontent.com/u/150429791?v=4" --output /tmp/jamal-avatar
+          python - <<'PY'
+          from PIL import Image
+          from pathlib import Path
+          source = Image.open('/tmp/jamal-avatar').convert('RGB')
+          source.thumbnail((900, 900), Image.Resampling.LANCZOS)
+          output = Path('public/jamal-yaqoob.webp')
+          output.parent.mkdir(parents=True, exist_ok=True)
+          source.save(output, 'WEBP', quality=86, method=6)
+          print(f'wrote {output}')
+          PY
+
+      - name: Create deterministic lockfile
+        run: npm install --package-lock-only --ignore-scripts
 
       - name: Install dependencies
         run: npm ci
