@@ -1,0 +1,237 @@
+.page {
+  min-height: 100vh;
+  background: #eef0f3;
+  color: #202630;
+  padding: 32px 16px 56px;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.toolbar {
+  width: min(920px, 100%);
+  margin: 0 auto 16px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.toolbar a,
+.toolbar button {
+  border: 1px solid #263244;
+  border-radius: 999px;
+  background: #fff;
+  color: #263244;
+  padding: 10px 16px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.sheet {
+  width: min(920px, 100%);
+  margin: 0 auto;
+  background: #fff;
+  box-shadow: 0 24px 80px rgba(20, 31, 46, 0.14);
+}
+
+.header {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 190px;
+  background: #343e51;
+  color: #fff;
+}
+
+.photoWrap {
+  display: grid;
+  place-items: center;
+  background: #e6e7e9;
+}
+
+.photo {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.identity {
+  align-self: center;
+  padding: 36px 48px;
+}
+
+.identity h1 {
+  margin: 0;
+  font-size: clamp(34px, 6vw, 54px);
+  letter-spacing: 0.04em;
+}
+
+.identity p {
+  margin: 10px 0 0;
+  font-size: 20px;
+  letter-spacing: 0.08em;
+}
+
+.body {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+}
+
+.sidebar {
+  background: #e6e7e9;
+  padding: 36px 28px;
+}
+
+.main {
+  padding: 36px 48px 48px;
+}
+
+.section + .section {
+  margin-top: 32px;
+}
+
+.section h2 {
+  margin: 0 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #334055;
+  color: #334055;
+  font-size: 20px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.sidebar .section h2 {
+  font-size: 17px;
+}
+
+.contact,
+.skills,
+.languages {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.contact li,
+.skills li,
+.languages li {
+  margin: 0 0 9px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.profile {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.role + .role {
+  margin-top: 26px;
+}
+
+.roleHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: baseline;
+}
+
+.roleHeader h3 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.roleHeader span {
+  white-space: nowrap;
+  font-size: 13px;
+  color: #586274;
+}
+
+.roleTitle {
+  margin: 4px 0 10px;
+  font-weight: 700;
+  color: #4b5669;
+}
+
+.role ul {
+  margin: 0;
+  padding-left: 20px;
+  line-height: 1.5;
+}
+
+.education p {
+  margin: 4px 0;
+}
+
+@media (max-width: 720px) {
+  .header,
+  .body {
+    grid-template-columns: 1fr;
+  }
+
+  .header {
+    text-align: center;
+  }
+
+  .photoWrap {
+    padding: 28px 0 0;
+    background: #343e51;
+  }
+
+  .photo {
+    border: 5px solid rgba(255,255,255,.18);
+  }
+
+  .identity,
+  .main {
+    padding: 28px 24px;
+  }
+
+  .sidebar {
+    padding: 28px 24px;
+  }
+
+  .roleHeader {
+    display: block;
+  }
+
+  .roleHeader span {
+    display: block;
+    margin-top: 4px;
+  }
+}
+
+@media print {
+  @page { size: A4; margin: 0; }
+
+  .page {
+    padding: 0;
+    background: #fff;
+  }
+
+  .toolbar {
+    display: none;
+  }
+
+  .sheet {
+    width: 100%;
+    box-shadow: none;
+  }
+
+  .header,
+  .body {
+    grid-template-columns: 32% 68%;
+  }
+
+  .identity {
+    padding: 30px 36px;
+  }
+
+  .sidebar {
+    padding: 28px 22px;
+  }
+
+  .main {
+    padding: 28px 36px 34px;
+  }
+}
