@@ -1,0 +1,200 @@
+function ThemeSwitcher({ theme, onChange }: { theme: ThemeId; onChange: (theme: ThemeId) => void }) {
+  const [open, setOpen] = useState(false);
+  const active = themes.find((item) => item.id === theme) ?? themes[0];
+
+  return (
+    <div className="theme-switcher">
+      <button
+        type="button"
+        className="theme-trigger"
+        aria-label="Choose color theme"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        {theme === "ivory" ? <Sun size={16} /> : <MoonStar size={16} />}
+        <span>{active.label}</span>
+        <ChevronDown size={14} className={open ? "rotate-180" : ""} />
+      </button>
+      <AnimatePresence>
+        {open ? (
+          <motion.div
+            className="theme-menu"
+            initial={{ opacity: 0, y: -8, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.96 }}
+          >
+            {themes.map((item) => (
+              <button
+                type="button"
+                key={item.id}
+                className="theme-option"
+                onClick={() => {
+                  onChange(item.id);
+                  setOpen(false);
+                }}
+              >
+                <span className="theme-swatch" style={{ background: item.swatch }} />
+                <span>{item.label}</span>
+                {theme === item.id ? <Check size={15} /> : null}
+              </button>
+            ))}
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function Header({ theme, onThemeChange }: { theme: ThemeId; onThemeChange: (theme: ThemeId) => void }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <header className="site-header">
+      <a href="#home" className="brand" aria-label="Jamal Yaqoob — home">
+        <span className="brand-mark">JY</span>
+        <span className="brand-copy">
+          <strong>Jamal Yaqoob</strong>
+          <small>Finance × Systems</small>
+        </span>
+      </a>
+
+      <nav className="desktop-nav" aria-label="Primary navigation">
+        {navigation.map((item) => (
+          <a key={item.href} href={item.href}>
+            {item.label}
+          </a>
+        ))}
+      </nav>
+
+      <div className="header-actions">
+        <ThemeSwitcher theme={theme} onChange={onThemeChange} />
+        <MagneticLink href="mailto:jamalarain186@gmail.com" className="header-cta">
+          Let’s connect <ArrowUpRight size={16} />
+        </MagneticLink>
+        <button
+          className="mobile-menu-button"
+          type="button"
+          aria-label="Open navigation"
+          onClick={() => setOpen(true)}
+        >
+          <Menu size={21} />
+        </button>
+      </div>
+
+      <AnimatePresence>
+        {open ? (
+          <motion.div
+            className="mobile-menu"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <button className="mobile-menu-close" onClick={() => setOpen(false)} aria-label="Close navigation">
+              <X size={24} />
+            </button>
+            <div className="mobile-menu-links">
+              {navigation.map((item, index) => (
+                <motion.a
+                  href={item.href}
+                  key={item.href}
+                  onClick={() => setOpen(false)}
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.06 }}
+                >
+                  <span>0{index + 1}</span>
+                  {item.label}
+                </motion.a>
+              ))}
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </header>
+  );
+}
+
+function SectionHeading({ index, label, title }: { index: string; label: string; title: string }) {
+  return (
+    <div className="section-heading">
+      <div className="section-kicker">
+        <span>{index}</span>
+        <span>{label}</span>
+      </div>
+      <h2>{title}</h2>
+    </div>
+  );
+}
+
+function Hero() {
+  const reduceMotion = useReducedMotion();
+  const heroRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
+  const portraitY = useTransform(scrollYProgress, [0, 1], [0, reduceMotion ? 0 : 120]);
+  const copyY = useTransform(scrollYProgress, [0, 1], [0, reduceMotion ? 0 : 72]);
+  const copyOpacity = useTransform(scrollYProgress, [0, 0.7], [1, 0]);
+
+  return (
+    <section className="hero" id="home" ref={heroRef}>
+      <div className="hero-grid" aria-hidden />
+      <motion.div className="hero-copy" style={{ y: copyY, opacity: copyOpacity }}>
+        <motion.div
+          className="availability-pill"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7 }}
+        >
+          <span className="availability-dot" />
+          Karachi, Pakistan · Accounting & finance
+        </motion.div>
+
+        <h1>
+          <motion.span
+            className="hero-line"
+            initial={{ y: "115%" }}
+            animate={{ y: 0 }}
+            transition={{ duration: 0.9, ease: [0.2, 0.8, 0.2, 1] }}
+          >
+            Numbers with
+          </motion.span>
+          <motion.span
+            className="hero-line hero-line-accent"
+            initial={{ y: "115%" }}
+            animate={{ y: 0 }}
+            transition={{ duration: 0.9, delay: 0.08, ease: [0.2, 0.8, 0.2, 1] }}
+          >
+            operational intelligence.
+          </motion.span>
+        </h1>
+
+        <motion.p
+          className="hero-intro"
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.45 }}
+        >
+          I’m Jamal Yaqoob — an accounts professional and computer science student building precise finance
+          operations, reliable systems and thoughtful digital products.
+        </motion.p>
+
+        <motion.div
+          className="hero-actions"
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.58 }}
+        >
+          <MagneticLink href="#work" className="button button-primary">
+            Explore selected work <ArrowDownRight size={18} />
+          </MagneticLink>
+          <MagneticLink href="/resume/" className="button button-secondary">
+            Download résumé <Download size={17} />
+          </MagneticLink>
+        </motion.div>
+
+        <div className="hero-meta">
+          <div>
+            <span>Current role</span>
+            <strong>Assistant Accountant</strong>
+          </div>
+          <div>
+            <span>Focus</span>
