@@ -3,7 +3,7 @@ name: Apply Final Portfolio Release
 on:
   push:
     paths:
-      - release-payload/READY
+      - release2-payload/READY
   workflow_dispatch:
 
 permissions:
@@ -16,13 +16,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Restore audited project
+      - name: Restore verified project
         shell: bash
         run: |
           set -euo pipefail
-          cat release-payload/archive/*.part | base64 --decode > /tmp/jamal-portfolio-release.tar.gz
-          echo "28f947d00c2db89010f63b1ba9a0cd248d1cf8ceeec28dd4a9a869992f338d36  /tmp/jamal-portfolio-release.tar.gz" | sha256sum --check
+          cat release2-payload/archive/*.part | base64 --decode > /tmp/jamal-portfolio-release.tar.gz
+          echo "8c71628b818342a9648ac014fe07574f34a1d9cb91ddddc477bd55e68638d36f  /tmp/jamal-portfolio-release.tar.gz" | sha256sum --check
           tar -xzf /tmp/jamal-portfolio-release.tar.gz -C .
+
+      - name: Generate deterministic lockfile
+        run: npm install --package-lock-only --ignore-scripts
 
       - name: Install dependencies
         run: npm ci
@@ -34,7 +37,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf audit-payload release-payload .github/workflows/apply-audit.yml
+          rm -rf audit-payload release-payload release2-payload .github/workflows/apply-audit.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
