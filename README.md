@@ -4,9 +4,11 @@ A production-grade portfolio for **Jamal Yaqoob**, an accounting and finance pro
 
 ## Live website
 
-**Permanent public link:** https://maijamalhoon.github.io/jamal-portfolio/
+**Vercel production:** https://jamal-portfolio-jamal-s-projects18.vercel.app/
 
-The same repository is connected to the Jamal Portfolio project on Vercel for automatic production deployments.
+**GitHub Pages fallback:** https://maijamalhoon.github.io/jamal-portfolio/
+
+Both links are public. The repository is connected to Vercel for automatic production deployments.
 
 ## What makes it different
 
@@ -38,7 +40,7 @@ npm ci
 npm run check
 ```
 
-`npm run check` runs lint, TypeScript validation and a complete production build.
+`npm run check` runs lint, a complete production build and TypeScript validation.
 
 ## Local development
 
