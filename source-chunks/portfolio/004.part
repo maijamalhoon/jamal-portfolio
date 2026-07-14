@@ -1,0 +1,186 @@
+
+  if (type === "payroll") {
+    return (
+      <div className="project-visual payroll-visual">
+        <div className="payroll-sheet">
+          <div className="sheet-head"><span>PAYROLL</span><strong>06/26</strong></div>
+          {[74, 88, 62, 82].map((width, index) => (
+            <div className="sheet-row" key={width}>
+              <i />
+              <span style={{ width: `${width}%` }} />
+              <b>{index % 2 ? "✓" : "+"}</b>
+            </div>
+          ))}
+        </div>
+        <div className="visual-icon"><Icon size={26} /></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="project-visual operations-visual">
+      <div className="ledger-rings">
+        <span className="ring ring-a" />
+        <span className="ring ring-b" />
+        <span className="ring ring-c" />
+        <div className="ledger-core"><Icon size={34} /></div>
+      </div>
+      <div className="ops-ticker">CASH FLOW · BANKS · JOURNALS · REPORTS</div>
+    </div>
+  );
+}
+
+function Work() {
+  return (
+    <section className="section work-section" id="work">
+      <SectionHeading index="04" label="Selected work" title="Products and systems that turn complexity into useful control." />
+      <div className="projects-list">
+        {projects.map((project, index) => (
+          <motion.article
+            className="project-card"
+            key={project.title}
+            initial={{ opacity: 0, y: 46 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-10%" }}
+            transition={{ duration: 0.75, delay: index * 0.08 }}
+          >
+            <ProjectVisual type={project.visual as keyof typeof iconMap} />
+            <div className="project-content">
+              <div className="project-topline">
+                <span>{project.eyebrow}</span>
+                <span className="project-status">{project.status}</span>
+              </div>
+              <h3>{project.title}</h3>
+              <p>{project.description}</p>
+              <div className="project-stack">
+                {project.stack.map((item) => <span key={item}>{item}</span>)}
+              </div>
+              <div className="project-actions">
+                {project.href ? (
+                  <a href={project.href} target={project.href.startsWith("http") ? "_blank" : undefined} rel="noreferrer">
+                    {project.href.startsWith("http") ? "Open project" : "View case study"}
+                    <ArrowUpRight size={17} />
+                  </a>
+                ) : (
+                  <span className="private-label"><Layers3 size={16} /> Private repository</span>
+                )}
+                {project.repo ? (
+                  <a href={project.repo} target="_blank" rel="noreferrer" className="project-repo">
+                    <GitHubIcon size={17} /> Source
+                  </a>
+                ) : null}
+              </div>
+            </div>
+          </motion.article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Education() {
+  return (
+    <section className="section education-section">
+      <div className="education-panel">
+        <div className="education-icon"><BookOpen size={25} /></div>
+        <div>
+          <span>Education · 2025 — Present</span>
+          <h2>Bachelor’s in Computer Science</h2>
+          <p>Allama Iqbal Open University</p>
+        </div>
+        <div className="education-note">Building the technical depth to create better financial tools and operational systems.</div>
+      </div>
+    </section>
+  );
+}
+
+function Contact() {
+  return (
+    <section className="contact-section" id="contact">
+      <div className="contact-glow" aria-hidden />
+      <div className="contact-copy">
+        <span className="contact-eyebrow"><Sparkles size={15} /> Let’s build something precise</span>
+        <h2>Need finance discipline with systems thinking?</h2>
+        <p>
+          Let’s talk about accounting operations, reporting, finance systems or a digital product that deserves a cleaner experience.
+        </p>
+        <div className="contact-actions">
+          <MagneticLink href="mailto:jamalarain186@gmail.com" className="button button-light">
+            Start a conversation <Mail size={18} />
+          </MagneticLink>
+          <MagneticLink href="tel:+923282685435" className="button button-ghost-light">
+            +92 328 2685435 <Phone size={17} />
+          </MagneticLink>
+        </div>
+      </div>
+      <div className="contact-orbit" aria-hidden>
+        <div className="contact-core">JY</div>
+        <span className="contact-ring ring-one" />
+        <span className="contact-ring ring-two" />
+        <span className="contact-node node-one"><Calculator size={17} /></span>
+        <span className="contact-node node-two"><Code2 size={17} /></span>
+        <span className="contact-node node-three"><ReceiptText size={17} /></span>
+      </div>
+    </section>
+  );
+}
+
+function Footer() {
+  return (
+    <footer className="footer">
+      <div>
+        <strong>Jamal Yaqoob</strong>
+        <span>Accounting, finance and systems.</span>
+      </div>
+      <div className="footer-links">
+        <a href="mailto:jamalarain186@gmail.com">Email</a>
+        <a href="https://github.com/maijamalhoon" target="_blank" rel="noreferrer">GitHub</a>
+        <a href="/resume/">Résumé</a>
+      </div>
+      <span>© {new Date().getFullYear()} · Karachi, Pakistan</span>
+    </footer>
+  );
+}
+
+export default function PortfolioPage() {
+  const { theme, changeTheme } = useThemePalette();
+  const { scrollYProgress } = useScroll();
+  const progress = useSpring(scrollYProgress, { stiffness: 140, damping: 30, restDelta: 0.001 });
+
+  const structuredData = useMemo(
+    () => ({
+      "@context": "https://schema.org",
+      "@type": "Person",
+      name: "Jamal Yaqoob",
+      jobTitle: "Assistant Accountant",
+      email: "mailto:jamalarain186@gmail.com",
+      address: { "@type": "PostalAddress", addressLocality: "Karachi", addressCountry: "PK" },
+      url: "https://github.com/maijamalhoon",
+      sameAs: ["https://github.com/maijamalhoon"],
+    }),
+    [],
+  );
+
+  return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+      <SmoothScroll />
+      <CursorAura />
+      <motion.div className="scroll-progress" style={{ scaleX: progress }} />
+      <div className="page-shell">
+        <Header theme={theme} onThemeChange={changeTheme} />
+        <main>
+          <Hero />
+          <SignalMarquee />
+          <About />
+          <Experience />
+          <Skills />
+          <Work />
+          <Education />
+          <Contact />
+        </main>
+        <Footer />
+      </div>
+    </>
+  );
+}
