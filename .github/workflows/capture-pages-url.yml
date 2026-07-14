@@ -1,0 +1,56 @@
+name: Verify GitHub Pages public URL
+
+on:
+  push:
+    paths:
+      - .github/CAPTURE_PAGES_URL
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  deployments: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Find successful GitHub Pages deployment URL
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          found=""
+          while read -r row; do
+            deployment_id="$(printf '%s' "$row" | jq -r '.id')"
+            environment="$(printf '%s' "$row" | jq -r '.environment // empty')"
+            [ "$environment" = "github-pages" ] || continue
+            status_json="$(gh api "repos/${GITHUB_REPOSITORY}/deployments/${deployment_id}/statuses?per_page=20")"
+            candidate="$(printf '%s' "$status_json" | jq -r '[.[] | select(.state == "success") | .environment_url // empty] | map(select(test("github\\.io"))) | .[0] // empty')"
+            if [ -n "$candidate" ]; then
+              found="$candidate"
+              break
+            fi
+          done < <(gh api "repos/${GITHUB_REPOSITORY}/deployments?per_page=100" --jq '.[] | @json')
+
+          if [ -z "$found" ]; then
+            echo "No successful GitHub Pages URL found" >&2
+            exit 1
+          fi
+
+          printf '%s\n' "$found" > GITHUB_PAGES_URL.txt
+          echo "Captured $found"
+
+      - name: Commit verified Pages URL and remove one-time workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/CAPTURE_PAGES_URL .github/workflows/capture-pages-url.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "docs: record verified GitHub Pages URL"
+          git push
