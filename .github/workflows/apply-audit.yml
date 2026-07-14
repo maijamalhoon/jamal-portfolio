@@ -1,9 +1,9 @@
-name: Apply Portfolio Audit
+name: Apply Final Portfolio Release
 
 on:
   push:
     paths:
-      - audit-payload/READY
+      - release-payload/READY
   workflow_dispatch:
 
 permissions:
@@ -20,23 +20,23 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat audit-payload/archive/*.part | base64 --decode > /tmp/jamal-portfolio-audit.tar.gz
-          echo "5bb4fac80a608b24f4f810bd1c6ff7688cc0c357b30a583afc561c10b6db38b1  /tmp/jamal-portfolio-audit.tar.gz" | sha256sum --check
-          tar -xzf /tmp/jamal-portfolio-audit.tar.gz -C .
+          cat release-payload/archive/*.part | base64 --decode > /tmp/jamal-portfolio-release.tar.gz
+          echo "28f947d00c2db89010f63b1ba9a0cd248d1cf8ceeec28dd4a9a869992f338d36  /tmp/jamal-portfolio-release.tar.gz" | sha256sum --check
+          tar -xzf /tmp/jamal-portfolio-release.tar.gz -C .
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Verify audit
+      - name: Verify audited release
         run: npm run check
 
-      - name: Commit audited portfolio
+      - name: Commit final portfolio
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf audit-payload .github/workflows/apply-audit.yml
+          rm -rf audit-payload release-payload .github/workflows/apply-audit.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "feat: complete portfolio functionality and production audit"
+          git commit -m "feat: complete HR-ready portfolio and live professional integrations"
           git push
