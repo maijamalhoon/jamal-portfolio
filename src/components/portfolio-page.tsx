@@ -11,11 +11,15 @@ import {
   Calculator,
   Check,
   ChevronDown,
+  ChevronUp,
   CircleDollarSign,
+  ClipboardCopy,
   Code2,
   Download,
+  ExternalLink,
   Landmark,
   Layers3,
+  Link2,
   Mail,
   Menu,
   MoonStar,
@@ -36,14 +40,32 @@ import {
   useTransform,
 } from "motion/react";
 import Lenis from "lenis";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { experience, navigation, projects, skillGroups, themes, type ThemeId } from "@/lib/data";
+import { basePath, siteUrl } from "@/lib/site";
+import GitHubLive from "@/components/github-live";
 
 const iconMap = {
   finance: CircleDollarSign,
   payroll: Calculator,
   operations: Landmark,
 };
+
+const contactDetails = {
+  email: "jamalarain186@gmail.com",
+  phoneDisplay: "+92 328 2685435",
+  phoneValue: "+923282685435",
+  github: "https://github.com/maijamalhoon",
+  linkedin: "https://pk.linkedin.com/in/jamalarain-it",
+};
+
+const portfolioPaths = {
+  resume: `${basePath}/resume/`,
+  resumePdf: `${basePath}/Jamal_Yaqoob_Resume.pdf`,
+  vcard: `${basePath}/Jamal_Yaqoob.vcf`,
+};
+
+type ToastState = { id: number; message: string } | null;
 
 function GitHubIcon({ size = 24 }: { size?: number }) {
   return (
@@ -59,6 +81,14 @@ function GitHubIcon({ size = 24 }: { size?: number }) {
         fill="currentColor"
         d="M12 2C6.48 2 2 6.58 2 12.23c0 4.52 2.87 8.35 6.84 9.71.5.1.68-.22.68-.49 0-.24-.01-1.05-.01-1.9-2.78.62-3.37-1.21-3.37-1.21-.45-1.18-1.11-1.49-1.11-1.49-.91-.64.07-.62.07-.62 1 .07 1.53 1.06 1.53 1.06.89 1.56 2.34 1.11 2.91.85.09-.66.35-1.11.64-1.37-2.22-.26-4.56-1.14-4.56-5.06 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.71 0 0 .84-.28 2.75 1.05A9.3 9.3 0 0 1 12 6.66c.85 0 1.71.12 2.51.34 1.91-1.33 2.75-1.05 2.75-1.05.55 1.41.2 2.45.1 2.71.64.72 1.03 1.63 1.03 2.75 0 3.93-2.34 4.8-4.57 5.05.36.32.68.95.68 1.91 0 1.38-.01 2.49-.01 2.83 0 .27.18.59.69.49A10.24 10.24 0 0 0 22 12.23C22 6.58 17.52 2 12 2Z"
       />
+    </svg>
+  );
+}
+
+function LinkedInIcon({ size = 24 }: { size?: number }) {
+  return (
+    <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M6.5 8.25H3.25V21H6.5V8.25ZM4.88 3C3.84 3 3 3.84 3 4.88s.84 1.87 1.88 1.87 1.87-.83 1.87-1.87S5.92 3 4.88 3ZM21 13.7c0-3.83-2.04-5.61-4.77-5.61-2.2 0-3.18 1.21-3.73 2.06v-1.9H9.25V21h3.25v-6.31c0-1.66.31-3.27 2.37-3.27 2.03 0 2.06 1.9 2.06 3.38V21H21v-7.3Z" />
     </svg>
   );
 }
@@ -94,7 +124,13 @@ function useThemePalette() {
 }
 
 function SmoothScroll() {
+  const reduceMotion = useReducedMotion();
+
   useEffect(() => {
+    const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
+    const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
+    if (reduceMotion || coarsePointer || saveData) return;
+
     const lenis = new Lenis({
       duration: 1.05,
       smoothWheel: true,
@@ -113,27 +149,38 @@ function SmoothScroll() {
       cancelAnimationFrame(frame);
       lenis.destroy();
     };
-  }, []);
+  }, [reduceMotion]);
 
   return null;
 }
 
 function CursorAura() {
+  const reduceMotion = useReducedMotion();
+  const [enabled, setEnabled] = useState(false);
   const x = useMotionValue(-100);
   const y = useMotionValue(-100);
   const smoothX = useSpring(x, { stiffness: 550, damping: 42, mass: 0.35 });
   const smoothY = useSpring(y, { stiffness: 550, damping: 42, mass: 0.35 });
 
   useEffect(() => {
+    const pointerQuery = window.matchMedia("(pointer: fine) and (hover: hover)");
+    const sync = () => setEnabled(pointerQuery.matches && !reduceMotion);
+    sync();
+    pointerQuery.addEventListener("change", sync);
+    return () => pointerQuery.removeEventListener("change", sync);
+  }, [reduceMotion]);
+
+  useEffect(() => {
+    if (!enabled) return;
     const move = (event: PointerEvent) => {
       x.set(event.clientX - 160);
       y.set(event.clientY - 160);
     };
     window.addEventListener("pointermove", move, { passive: true });
     return () => window.removeEventListener("pointermove", move);
-  }, [x, y]);
+  }, [enabled, x, y]);
 
-  return <motion.div aria-hidden className="cursor-aura" style={{ x: smoothX, y: smoothY }} />;
+  return enabled ? <motion.div aria-hidden className="cursor-aura" style={{ x: smoothX, y: smoothY }} /> : null;
 }
 
 function MagneticLink({
@@ -184,6 +231,51 @@ function MagneticLink({
   );
 }
 
+function MagneticButton({
+  children,
+  className = "",
+  onClick,
+  ariaLabel,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  onClick: () => void;
+  ariaLabel?: string;
+}) {
+  const ref = useRef<HTMLButtonElement>(null);
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const springX = useSpring(x, { stiffness: 260, damping: 18 });
+  const springY = useSpring(y, { stiffness: 260, damping: 18 });
+
+  const onMove = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const rect = ref.current?.getBoundingClientRect();
+    if (!rect) return;
+    x.set((event.clientX - rect.left - rect.width / 2) * 0.2);
+    y.set((event.clientY - rect.top - rect.height / 2) * 0.2);
+  };
+
+  const reset = () => {
+    x.set(0);
+    y.set(0);
+  };
+
+  return (
+    <motion.button
+      ref={ref}
+      type="button"
+      className={className}
+      style={{ x: springX, y: springY }}
+      onPointerMove={onMove}
+      onPointerLeave={reset}
+      onClick={onClick}
+      aria-label={ariaLabel}
+    >
+      {children}
+    </motion.button>
+  );
+}
+
 function SpotlightCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   const onMove = (event: React.PointerEvent<HTMLDivElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -201,14 +293,34 @@ function SpotlightCard({ children, className = "" }: { children: React.ReactNode
 function ThemeSwitcher({ theme, onChange }: { theme: ThemeId; onChange: (theme: ThemeId) => void }) {
   const [open, setOpen] = useState(false);
   const active = themes.find((item) => item.id === theme) ?? themes[0];
+  const rootRef = useRef<HTMLDivElement>(null);
+  const menuId = useId();
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
 
   return (
-    <div className="theme-switcher">
+    <div className="theme-switcher" ref={rootRef}>
       <button
         type="button"
         className="theme-trigger"
         aria-label="Choose color theme"
         aria-expanded={open}
+        aria-controls={menuId}
+        aria-haspopup="menu"
         onClick={() => setOpen((value) => !value)}
       >
         {theme === "ivory" ? <Sun size={16} /> : <MoonStar size={16} />}
@@ -218,7 +330,10 @@ function ThemeSwitcher({ theme, onChange }: { theme: ThemeId; onChange: (theme: 
       <AnimatePresence>
         {open ? (
           <motion.div
+            id={menuId}
             className="theme-menu"
+            role="menu"
+            aria-label="Color themes"
             initial={{ opacity: 0, y: -8, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.96 }}
@@ -226,6 +341,8 @@ function ThemeSwitcher({ theme, onChange }: { theme: ThemeId; onChange: (theme: 
             {themes.map((item) => (
               <button
                 type="button"
+                role="menuitemradio"
+                aria-checked={theme === item.id}
                 key={item.id}
                 className="theme-option"
                 onClick={() => {
@@ -245,8 +362,57 @@ function ThemeSwitcher({ theme, onChange }: { theme: ThemeId; onChange: (theme: 
   );
 }
 
-function Header({ theme, onThemeChange }: { theme: ThemeId; onThemeChange: (theme: ThemeId) => void }) {
+function Header({
+  theme,
+  onThemeChange,
+  activeSection,
+  onOpenContact,
+}: {
+  theme: ThemeId;
+  onThemeChange: (theme: ThemeId) => void;
+  activeSection: string;
+  onOpenContact: () => void;
+}) {
   const [open, setOpen] = useState(false);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuId = useId();
+
+  useEffect(() => {
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    const trigger = triggerRef.current;
+    document.body.style.overflow = "hidden";
+    closeRef.current?.focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = Array.from(
+        document.querySelectorAll<HTMLElement>(`#${CSS.escape(menuId)} a, #${CSS.escape(menuId)} button`),
+      );
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", onKeyDown);
+      trigger?.focus();
+    };
+  }, [menuId, open]);
 
   return (
     <header className="site-header">
@@ -259,22 +425,28 @@ function Header({ theme, onThemeChange }: { theme: ThemeId; onThemeChange: (them
       </a>
 
       <nav className="desktop-nav" aria-label="Primary navigation">
-        {navigation.map((item) => (
-          <a key={item.href} href={item.href}>
-            {item.label}
-          </a>
-        ))}
+        {navigation.map((item) => {
+          const id = item.href.slice(1);
+          return (
+            <a key={item.href} href={item.href} aria-current={activeSection === id ? "page" : undefined}>
+              {item.label}
+            </a>
+          );
+        })}
       </nav>
 
       <div className="header-actions">
         <ThemeSwitcher theme={theme} onChange={onThemeChange} />
-        <MagneticLink href="mailto:jamalarain186@gmail.com" className="header-cta">
+        <MagneticButton className="header-cta" onClick={onOpenContact}>
           Let’s connect <ArrowUpRight size={16} />
-        </MagneticLink>
+        </MagneticButton>
         <button
+          ref={triggerRef}
           className="mobile-menu-button"
           type="button"
           aria-label="Open navigation"
+          aria-expanded={open}
+          aria-controls={menuId}
           onClick={() => setOpen(true)}
         >
           <Menu size={21} />
@@ -284,28 +456,43 @@ function Header({ theme, onThemeChange }: { theme: ThemeId; onThemeChange: (them
       <AnimatePresence>
         {open ? (
           <motion.div
+            id={menuId}
             className="mobile-menu"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Navigation menu"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            onPointerDown={(event) => {
+              if (event.target === event.currentTarget) setOpen(false);
+            }}
           >
-            <button className="mobile-menu-close" onClick={() => setOpen(false)} aria-label="Close navigation">
+            <button ref={closeRef} type="button" className="mobile-menu-close" onClick={() => setOpen(false)} aria-label="Close navigation">
               <X size={24} />
             </button>
             <div className="mobile-menu-links">
-              {navigation.map((item, index) => (
-                <motion.a
-                  href={item.href}
-                  key={item.href}
-                  onClick={() => setOpen(false)}
-                  initial={{ opacity: 0, y: 24 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.06 }}
-                >
-                  <span>0{index + 1}</span>
-                  {item.label}
-                </motion.a>
-              ))}
+              {navigation.map((item, index) => {
+                const id = item.href.slice(1);
+                return (
+                  <motion.a
+                    href={item.href}
+                    key={item.href}
+                    aria-current={activeSection === id ? "page" : undefined}
+                    onClick={() => setOpen(false)}
+                    initial={{ opacity: 0, y: 24 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.06 }}
+                  >
+                    <span>0{index + 1}</span>
+                    {item.label}
+                  </motion.a>
+                );
+              })}
+              <button type="button" className="mobile-contact-action" onClick={() => { setOpen(false); onOpenContact(); }}>
+                <span>06</span>
+                Contact actions
+              </button>
             </div>
           </motion.div>
         ) : null}
@@ -326,7 +513,7 @@ function SectionHeading({ index, label, title }: { index: string; label: string;
   );
 }
 
-function Hero() {
+function Hero({ onOpenContact }: { onOpenContact: () => void }) {
   const reduceMotion = useReducedMotion();
   const heroRef = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
@@ -386,9 +573,12 @@ function Hero() {
           <MagneticLink href="#work" className="button button-primary">
             Explore selected work <ArrowDownRight size={18} />
           </MagneticLink>
-          <MagneticLink href="/resume/" className="button button-secondary">
+          <MagneticLink href={portfolioPaths.resumePdf} className="button button-secondary" download>
             Download résumé <Download size={17} />
           </MagneticLink>
+          <button type="button" className="hero-contact-link" onClick={onOpenContact}>
+            Contact options
+          </button>
         </motion.div>
 
         <div className="hero-meta">
@@ -486,6 +676,7 @@ function About() {
             <a href="mailto:jamalarain186@gmail.com"><Mail size={17} /> Email me</a>
             <a href="tel:+923282685435"><Phone size={17} /> Call</a>
             <a href="https://github.com/maijamalhoon" target="_blank" rel="noreferrer"><GitHubIcon size={17} /> GitHub</a>
+            <a href={contactDetails.linkedin} target="_blank" rel="noreferrer"><LinkedInIcon size={17} /> LinkedIn</a>
           </div>
         </div>
         <div className="stats-grid">
@@ -694,7 +885,7 @@ function Education() {
   );
 }
 
-function Contact() {
+function Contact({ onOpenContact }: { onOpenContact: () => void }) {
   return (
     <section className="contact-section" id="contact">
       <div className="contact-glow" aria-hidden />
@@ -705,9 +896,9 @@ function Contact() {
           Let’s talk about accounting operations, reporting, finance systems or a digital product that deserves a cleaner experience.
         </p>
         <div className="contact-actions">
-          <MagneticLink href="mailto:jamalarain186@gmail.com" className="button button-light">
+          <MagneticButton className="button button-light" onClick={onOpenContact}>
             Start a conversation <Mail size={18} />
-          </MagneticLink>
+          </MagneticButton>
           <MagneticLink href="tel:+923282685435" className="button button-ghost-light">
             +92 328 2685435 <Phone size={17} />
           </MagneticLink>
@@ -725,6 +916,198 @@ function Contact() {
   );
 }
 
+function useActiveSection() {
+  const [activeSection, setActiveSection] = useState("home");
+
+  useEffect(() => {
+    const sections = navigation
+      .map((item) => document.getElementById(item.href.slice(1)))
+      .filter((section): section is HTMLElement => Boolean(section));
+    if (!sections.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible?.target.id) setActiveSection(visible.target.id);
+      },
+      { rootMargin: "-28% 0px -58%", threshold: [0.05, 0.2, 0.5] },
+    );
+
+    sections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, []);
+
+  return activeSection;
+}
+
+function ContactPanel({
+  open,
+  onClose,
+  onCopy,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCopy: (value: string, label: string) => void;
+}) {
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const panelId = useId();
+
+  useEffect(() => {
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeRef.current?.focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+      if (event.key !== "Tab") return;
+      const focusable = Array.from(document.querySelectorAll<HTMLElement>(`#${CSS.escape(panelId)} a, #${CSS.escape(panelId)} button`));
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [onClose, open, panelId]);
+
+  return (
+    <AnimatePresence>
+      {open ? (
+        <motion.div
+          className="contact-panel-backdrop"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onPointerDown={(event) => {
+            if (event.target === event.currentTarget) onClose();
+          }}
+        >
+          <motion.section
+            id={panelId}
+            className="contact-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={`${panelId}-title`}
+            initial={{ opacity: 0, y: 24, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 24, scale: 0.97 }}
+            transition={{ duration: 0.28 }}
+          >
+            <div className="contact-panel-head">
+              <div>
+                <span>Quick contact</span>
+                <h2 id={`${panelId}-title`}>Choose exactly how to connect.</h2>
+              </div>
+              <button ref={closeRef} type="button" onClick={onClose} aria-label="Close contact panel">
+                <X size={21} />
+              </button>
+            </div>
+
+            <div className="contact-panel-grid">
+              <button type="button" onClick={() => onCopy(contactDetails.email, "Email address")}>
+                <span><ClipboardCopy size={20} /></span>
+                <strong>Copy email</strong>
+                <small>{contactDetails.email}</small>
+              </button>
+              <button type="button" onClick={() => onCopy(contactDetails.phoneValue, "Phone number")}>
+                <span><Phone size={20} /></span>
+                <strong>Copy phone</strong>
+                <small>{contactDetails.phoneDisplay}</small>
+              </button>
+              <button type="button" onClick={() => onCopy(window.location.href.split("#")[0], "Portfolio link")}>
+                <span><Link2 size={20} /></span>
+                <strong>Copy portfolio link</strong>
+                <small>Share this portfolio anywhere</small>
+              </button>
+              <a href={contactDetails.github} target="_blank" rel="noreferrer">
+                <span><GitHubIcon size={20} /></span>
+                <strong>Open GitHub</strong>
+                <small>Projects and source code</small>
+                <ExternalLink size={17} />
+              </a>
+              <a href={contactDetails.linkedin} target="_blank" rel="noreferrer">
+                <span><LinkedInIcon size={20} /></span>
+                <strong>Open LinkedIn</strong>
+                <small>Professional profile and network</small>
+                <ExternalLink size={17} />
+              </a>
+            </div>
+
+            <div className="contact-panel-direct">
+              <a href={`mailto:${contactDetails.email}`}><Mail size={17} /> Open email app</a>
+              <a href={`tel:${contactDetails.phoneValue}`}><Phone size={17} /> Call now</a>
+              <a href={portfolioPaths.vcard} download><Download size={17} /> Save contact</a>
+            </div>
+          </motion.section>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+}
+
+function ToastViewport({ toast }: { toast: ToastState }) {
+  return (
+    <div className="toast-region" aria-live="polite" aria-atomic="true">
+      <AnimatePresence>
+        {toast ? (
+          <motion.div
+            key={toast.id}
+            className="custom-toast"
+            initial={{ opacity: 0, y: 16, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.96 }}
+          >
+            <Check size={17} />
+            {toast.message}
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function BackToTop() {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const update = () => setVisible(window.scrollY > 720);
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
+  }, []);
+
+  return (
+    <AnimatePresence>
+      {visible ? (
+        <motion.button
+          type="button"
+          className="back-to-top"
+          aria-label="Back to top"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.8 }}
+        >
+          <ChevronUp size={20} />
+        </motion.button>
+      ) : null}
+    </AnimatePresence>
+  );
+}
+
 function Footer() {
   return (
     <footer className="footer">
@@ -733,9 +1116,11 @@ function Footer() {
         <span>Accounting, finance and systems.</span>
       </div>
       <div className="footer-links">
-        <a href="mailto:jamalarain186@gmail.com">Email</a>
-        <a href="https://github.com/maijamalhoon" target="_blank" rel="noreferrer">GitHub</a>
-        <a href="/resume/">Résumé</a>
+        <a href={`mailto:${contactDetails.email}`}>Email</a>
+        <a href={contactDetails.github} target="_blank" rel="noreferrer">GitHub</a>
+        <a href={contactDetails.linkedin} target="_blank" rel="noreferrer">LinkedIn</a>
+        <a href={portfolioPaths.resume}>Résumé</a>
+        <a href={portfolioPaths.resumePdf} download>PDF</a>
       </div>
       <span>© {new Date().getFullYear()} · Karachi, Pakistan</span>
     </footer>
@@ -746,6 +1131,39 @@ export default function PortfolioPage() {
   const { theme, changeTheme } = useThemePalette();
   const { scrollYProgress } = useScroll();
   const progress = useSpring(scrollYProgress, { stiffness: 140, damping: 30, restDelta: 0.001 });
+  const activeSection = useActiveSection();
+  const [contactOpen, setContactOpen] = useState(false);
+  const [toast, setToast] = useState<ToastState>(null);
+  const toastTimer = useRef<number | null>(null);
+
+  const notify = useCallback((message: string) => {
+    const id = Date.now();
+    setToast({ id, message });
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), 2600);
+  }, []);
+
+  useEffect(() => () => {
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
+  }, []);
+
+  const copyToClipboard = useCallback(async (value: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      notify(`${label} copied`);
+    } catch {
+      const textArea = document.createElement("textarea");
+      textArea.value = value;
+      textArea.setAttribute("readonly", "");
+      textArea.style.position = "fixed";
+      textArea.style.opacity = "0";
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      textArea.remove();
+      notify(`${label} copied`);
+    }
+  }, [notify]);
 
   const structuredData = useMemo(
     () => ({
@@ -753,34 +1171,44 @@ export default function PortfolioPage() {
       "@type": "Person",
       name: "Jamal Yaqoob",
       jobTitle: "Assistant Accountant",
-      email: "mailto:jamalarain186@gmail.com",
+      email: `mailto:${contactDetails.email}`,
       address: { "@type": "PostalAddress", addressLocality: "Karachi", addressCountry: "PK" },
-      url: "https://github.com/maijamalhoon",
-      sameAs: ["https://github.com/maijamalhoon"],
+      url: siteUrl,
+      sameAs: [contactDetails.github, contactDetails.linkedin],
     }),
     [],
   );
 
   return (
     <>
+      <a className="skip-link" href="#main-content">Skip to main content</a>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
       <SmoothScroll />
       <CursorAura />
       <motion.div className="scroll-progress" style={{ scaleX: progress }} />
       <div className="page-shell">
-        <Header theme={theme} onThemeChange={changeTheme} />
-        <main>
-          <Hero />
+        <Header
+          theme={theme}
+          onThemeChange={changeTheme}
+          activeSection={activeSection}
+          onOpenContact={() => setContactOpen(true)}
+        />
+        <main id="main-content">
+          <Hero onOpenContact={() => setContactOpen(true)} />
           <SignalMarquee />
           <About />
           <Experience />
           <Skills />
           <Work />
+          <GitHubLive />
           <Education />
-          <Contact />
+          <Contact onOpenContact={() => setContactOpen(true)} />
         </main>
         <Footer />
       </div>
+      <ContactPanel open={contactOpen} onClose={() => setContactOpen(false)} onCopy={copyToClipboard} />
+      <ToastViewport toast={toast} />
+      <BackToTop />
     </>
   );
 }

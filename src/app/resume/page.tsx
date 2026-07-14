@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { PrintButton } from "./print-button";
+import { DownloadButton } from "./print-button";
 import styles from "./resume.module.css";
 
 export const metadata: Metadata = {
@@ -61,7 +61,7 @@ export default function ResumePage() {
     <main className={styles.page}>
       <div className={styles.toolbar}>
         <Link href="/">← Back to portfolio</Link>
-        <PrintButton />
+        <DownloadButton />
       </div>
 
       <article className={styles.sheet}>

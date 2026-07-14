@@ -28,10 +28,11 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm install
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
-      - name: Build static site
-        run: npm run build
+      - name: Verify and build static site
+        run: npm run check
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

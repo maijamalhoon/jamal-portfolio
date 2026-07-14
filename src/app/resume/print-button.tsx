@@ -1,9 +1,7 @@
-"use client";
-
-export function PrintButton() {
+export function DownloadButton() {
   return (
-    <button type="button" onClick={() => window.print()}>
-      Print / Save as PDF
-    </button>
+    <a href={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/Jamal_Yaqoob_Resume.pdf`} download>
+      Download résumé PDF
+    </a>
   );
 }

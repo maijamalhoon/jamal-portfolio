@@ -1,61 +1,54 @@
 # Jamal Yaqoob — Portfolio
 
-A motion-rich, responsive portfolio for **Jamal Yaqoob**, presenting his work across accounting, finance operations, dealership systems, and software projects.
+A production-grade portfolio for **Jamal Yaqoob**, an accounting and finance professional in Karachi combining dealership operations, ERP/DMS expertise, financial controls and computer science.
 
-## Highlights
+## Live website
 
-- Premium animated hero and section transitions
-- Four persistent themes: Noir, Cobalt, Ember, and Ivory
-- Smooth scrolling, cursor aura, spotlight cards, and magnetic actions
-- Responsive experience timeline, project case studies, and skills system
-- Reduced-motion support and keyboard-friendly interactions
-- Static export for fast deployment on Vercel, Netlify, or GitHub Pages
-- SEO metadata, Open Graph data, JSON-LD, sitemap, robots, and web manifest
+**Production:** https://jamal-portfolio.vercel.app
 
-## Technology
+**GitHub Pages fallback:** https://maijamalhoon.github.io/jamal-portfolio/
 
-- Next.js 16
-- React 19
-- TypeScript
-- Tailwind CSS 4
-- Motion
-- Lenis
-- Lucide React
-- Self-hosted Manrope and Space Grotesk variable fonts
+## What makes it different
 
-## Local development
+- Four persistent premium colour themes: Noir, Cobalt, Ember and Ivory.
+- Motion-led hero, project visuals, magnetic interactions and reduced-motion support.
+- Responsive layouts for mobile, tablet, desktop and ultrawide screens.
+- Custom accessible navigation, theme menu, contact panel, copy confirmations and 404 page.
+- Direct résumé PDF download, HTML résumé and downloadable vCard.
+- Live GitHub profile and public repository synchronization.
+- SEO metadata, JSON-LD, sitemap, robots, web manifest and security headers.
+- Deterministic CI checks for ESLint, TypeScript and production build.
 
-```bash
-npm install
-npm run dev
-```
+## Live GitHub synchronization
 
-Open `http://localhost:3000`.
+The portfolio requests Jamal's public GitHub profile and repositories directly from GitHub's public API. Public profile edits and public repository additions or removals appear automatically on the portfolio without a new deployment. A cached snapshot and built-in fallback keep the section reliable if GitHub is temporarily unavailable.
+
+Private repositories remain private and are never requested by the public site.
+
+## LinkedIn
+
+Professional profile: https://pk.linkedin.com/in/jamalarain-it
+
+LinkedIn does not provide unrestricted public access to experience and skills data. Those sections remain intentionally controlled in `src/lib/data.ts` so the portfolio never shows scraped, incomplete or unauthorized information.
 
 ## Quality checks
 
 ```bash
-npm run lint
-npm run build
+npm ci
+npm run check
 ```
 
-## Production build
+`npm run check` runs lint, TypeScript validation and a complete production build.
 
-The project uses Next.js static export. Running `npm run build` generates the deployable site in `out/`.
-
-Set the final public URL before deployment:
+## Local development
 
 ```bash
-cp .env.example .env.local
+npm ci
+npm run dev
 ```
 
-Then update `NEXT_PUBLIC_SITE_URL` in `.env.local`.
+Then open `http://localhost:3000`.
 
-## Featured work
+## Deployment
 
-- [Jamal's Finance](https://jamals-finance-sable.vercel.app) — personal finance workspace
-- [Jamal's Finance source](https://github.com/maijamalhoon/Jamals-finance)
-
-## Author
-
-Built for and maintained by **Jamal Yaqoob**.
+The repository is compatible with Vercel and GitHub Pages. Every push to `main` runs CI and publishes the static export through the included GitHub Actions workflows.

@@ -6,13 +6,16 @@ const repositoryBasePath = "/jamal-portfolio";
 const nextConfig: NextConfig = {
   output: "export",
   trailingSlash: true,
+  reactStrictMode: true,
+  poweredByHeader: false,
   basePath: isGitHubPages ? repositoryBasePath : "",
   assetPrefix: isGitHubPages ? repositoryBasePath : "",
+  env: {
+    NEXT_PUBLIC_BASE_PATH: isGitHubPages ? repositoryBasePath : "",
+  },
   images: {
     unoptimized: true,
-    remotePatterns: [
-      { protocol: "https", hostname: "avatars.githubusercontent.com" },
-    ],
+    remotePatterns: [{ protocol: "https", hostname: "avatars.githubusercontent.com" }],
   },
 };
 

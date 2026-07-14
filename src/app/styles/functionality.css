@@ -1,0 +1,408 @@
+/* Interaction and accessibility audit enhancements */
+html {
+  scrollbar-color: var(--accent) var(--bg-soft);
+  scrollbar-width: thin;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-soft);
+}
+
+::-webkit-scrollbar-thumb {
+  border: 2px solid var(--bg-soft);
+  border-radius: 999px;
+  background: linear-gradient(var(--accent), var(--accent-2));
+}
+
+button {
+  appearance: none;
+}
+
+:where(a, button):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.skip-link {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 10100;
+  padding: 11px 15px;
+  border-radius: 12px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 800;
+  transform: translateY(-160%);
+  transition: transform 0.2s ease;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+.desktop-nav a[aria-current="page"] {
+  color: var(--text);
+  background: var(--surface-strong);
+}
+
+.header-cta {
+  cursor: pointer;
+}
+
+.mobile-menu-links a[aria-current="page"] {
+  color: var(--accent);
+}
+
+.mobile-contact-action {
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+  width: 100%;
+  padding: 18px 6px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  font: 600 clamp(2rem, 8vw, 4rem)/1 "Space Grotesk Variable", sans-serif;
+  letter-spacing: -0.05em;
+}
+
+.mobile-contact-action span {
+  color: var(--accent);
+  font: 700 0.68rem/1 "Manrope Variable", sans-serif;
+  letter-spacing: 0.1em;
+}
+
+.hero-contact-link {
+  align-self: center;
+  padding: 8px 2px;
+  border: 0;
+  border-bottom: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--muted-strong);
+  cursor: pointer;
+  font-size: 0.76rem;
+  font-weight: 750;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.hero-contact-link:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.contact-panel-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10020;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: color-mix(in srgb, var(--bg) 74%, transparent);
+  backdrop-filter: blur(24px) saturate(130%);
+}
+
+.contact-panel {
+  width: min(760px, 100%);
+  max-height: min(760px, calc(100svh - 36px));
+  overflow: auto;
+  padding: clamp(22px, 4vw, 38px);
+  border: 1px solid var(--line-strong);
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at 92% 0%, var(--glow), transparent 19rem),
+    var(--surface-solid);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.contact-panel-head {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 24px;
+  align-items: start;
+}
+
+.contact-panel-head > div > span {
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.contact-panel-head h2 {
+  max-width: 13ch;
+  margin: 10px 0 0;
+  font: 650 clamp(2rem, 5vw, 4.4rem)/0.94 "Space Grotesk Variable", sans-serif;
+  letter-spacing: -0.065em;
+}
+
+.contact-panel-head > button {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.contact-panel-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 34px;
+}
+
+.contact-panel-grid > button,
+.contact-panel-grid > a {
+  position: relative;
+  min-height: 138px;
+  display: grid;
+  grid-template-columns: 42px 1fr auto;
+  grid-template-rows: auto auto;
+  gap: 5px 12px;
+  align-content: center;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.22s ease, border-color 0.22s ease, background 0.22s ease;
+}
+
+.contact-panel-grid > button:hover,
+.contact-panel-grid > a:hover {
+  transform: translateY(-3px);
+  border-color: var(--line-strong);
+  background: var(--surface-strong);
+}
+
+.contact-panel-grid > button > span,
+.contact-panel-grid > a > span {
+  grid-row: 1 / 3;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.contact-panel-grid strong {
+  align-self: end;
+  font: 700 0.95rem/1.2 "Space Grotesk Variable", sans-serif;
+}
+
+.contact-panel-grid small {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contact-panel-grid > a > svg {
+  grid-column: 3;
+  grid-row: 1 / 3;
+  align-self: center;
+  color: var(--muted);
+}
+
+.contact-panel-direct {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.contact-panel-direct a {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--surface);
+  color: var(--muted-strong);
+  font-size: 0.76rem;
+  font-weight: 750;
+}
+
+.toast-region {
+  position: fixed;
+  z-index: 10040;
+  right: 18px;
+  bottom: 18px;
+  pointer-events: none;
+}
+
+.custom-toast {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: 15px;
+  background: var(--surface-solid);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  font-size: 0.8rem;
+  font-weight: 750;
+}
+
+.custom-toast svg {
+  color: var(--accent);
+}
+
+.back-to-top {
+  position: fixed;
+  z-index: 120;
+  right: 18px;
+  bottom: 18px;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  background: var(--surface-solid);
+  color: var(--text);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.24);
+  cursor: pointer;
+}
+
+.not-found-page {
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  background:
+    radial-gradient(circle at 18% 15%, var(--glow), transparent 30rem),
+    var(--bg);
+  color: var(--text);
+}
+
+.not-found-card {
+  width: min(700px, 100%);
+  padding: clamp(28px, 7vw, 72px);
+  border: 1px solid var(--line);
+  border-radius: 34px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.not-found-card > span {
+  color: var(--accent);
+  font-weight: 850;
+  letter-spacing: 0.14em;
+}
+
+.not-found-card h1 {
+  margin: 16px 0 0;
+  font: 650 clamp(3rem, 10vw, 7rem)/0.9 "Space Grotesk Variable", sans-serif;
+  letter-spacing: -0.075em;
+}
+
+.not-found-card p {
+  max-width: 52ch;
+  margin: 24px auto 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.not-found-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+.not-found-actions a {
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-strong);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.not-found-actions a:first-child {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: transparent;
+}
+
+@media (max-width: 620px) {
+  .hero-contact-link {
+    align-self: flex-start;
+  }
+
+  .contact-panel-backdrop {
+    padding: 8px;
+    align-items: end;
+  }
+
+  .contact-panel {
+    width: 100%;
+    max-height: calc(100svh - 16px);
+    border-radius: 28px 28px 18px 18px;
+    padding: 24px 18px;
+  }
+
+  .contact-panel-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .contact-panel-grid > button,
+  .contact-panel-grid > a {
+    min-height: 104px;
+  }
+
+  .contact-panel-direct {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .contact-panel-direct a {
+    justify-content: center;
+    padding-inline: 8px;
+  }
+
+  .toast-region {
+    right: 12px;
+    left: 12px;
+    bottom: 12px;
+  }
+
+  .custom-toast {
+    justify-content: center;
+  }
+
+  .back-to-top {
+    right: 12px;
+    bottom: 12px;
+  }
+}
