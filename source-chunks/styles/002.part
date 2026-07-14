@@ -1,0 +1,250 @@
+  background: var(--surface-strong);
+  outline: none;
+}
+
+.header-actions {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-cta,
+.theme-trigger,
+.mobile-menu-button {
+  height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+}
+
+.header-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 15px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 750;
+  font-size: 0.78rem;
+  box-shadow: 0 8px 22px var(--glow);
+}
+
+.theme-switcher {
+  position: relative;
+}
+
+.theme-trigger {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 12px;
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.theme-trigger span {
+  font-size: 0.75rem;
+  color: var(--muted-strong);
+}
+
+.theme-trigger svg:last-child {
+  transition: transform 0.2s ease;
+}
+
+.rotate-180 {
+  transform: rotate(180deg);
+}
+
+.theme-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 170px;
+  display: grid;
+  gap: 4px;
+  padding: 7px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--surface-solid);
+  box-shadow: var(--shadow);
+}
+
+.theme-option {
+  display: grid;
+  grid-template-columns: 16px 1fr 16px;
+  align-items: center;
+  gap: 9px;
+  min-height: 38px;
+  padding: 7px 9px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.78rem;
+}
+
+.theme-option:hover {
+  background: var(--surface-strong);
+}
+
+.theme-swatch {
+  width: 13px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px var(--line);
+}
+
+.mobile-menu-button {
+  display: none;
+  width: 42px;
+  padding: 0;
+  place-items: center;
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.mobile-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(22px);
+}
+
+.mobile-menu-close {
+  position: absolute;
+  right: 26px;
+  top: 26px;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 15px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.mobile-menu-links {
+  display: grid;
+  width: min(420px, calc(100% - 44px));
+}
+
+.mobile-menu-links a {
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+  padding: 18px 6px;
+  border-bottom: 1px solid var(--line);
+  font: 600 clamp(2rem, 8vw, 4rem)/1 "Space Grotesk Variable", sans-serif;
+  letter-spacing: -0.05em;
+}
+
+.mobile-menu-links a span {
+  color: var(--accent);
+  font: 700 0.68rem/1 "Manrope Variable", sans-serif;
+  letter-spacing: 0.1em;
+}
+
+.hero {
+  position: relative;
+  min-height: 100svh;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
+  align-items: center;
+  gap: clamp(36px, 6vw, 92px);
+  width: min(1320px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 150px 0 90px;
+  isolation: isolate;
+}
+
+.hero-grid {
+  position: absolute;
+  inset: 0 -12vw;
+  z-index: -2;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 62px 62px;
+  mask-image: linear-gradient(to bottom, transparent, #000 20%, #000 78%, transparent);
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 46vw;
+  height: 46vw;
+  max-width: 760px;
+  max-height: 760px;
+  right: -18vw;
+  top: 6vh;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, var(--glow), transparent 65%);
+  filter: blur(10px);
+}
+
+.hero-copy {
+  align-self: center;
+  padding-top: 10px;
+}
+
+.availability-pill,
+.contact-eyebrow {
+  width: fit-content;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 11px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted-strong);
+  font-size: 0.72rem;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.availability-dot {
+  width: 7px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 15%, transparent), 0 0 18px var(--accent);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(0.85); opacity: 0.75; }
+  50% { transform: scale(1.1); opacity: 1; }
+}
+
+.hero h1 {
+  margin: 26px 0 0;
+  font: 620 clamp(3.6rem, 7.7vw, 8.2rem)/0.88 "Space Grotesk Variable", sans-serif;
+  letter-spacing: -0.078em;
+  max-width: 11ch;
+}
+
+.hero-line {
+  display: block;
+  overflow: hidden;
+  padding: 0.04em 0.06em 0.08em 0;
+}
+
+.hero-line-accent {
+  color: var(--accent);
+  text-shadow: 0 16px 64px var(--glow);
+}
+
+.hero-intro {
+  max-width: 640px;
+  margin: 28px 0 0;
+  color: var(--muted-strong);
+  font-size: clamp(1rem, 1.35vw, 1.22rem);
+  line-height: 1.75;
+}
