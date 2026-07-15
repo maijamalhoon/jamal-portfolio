@@ -953,10 +953,12 @@ function ContactPanel({
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const panelId = useId();
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
     const previousOverflow = document.body.style.overflow;
+    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     document.body.style.overflow = "hidden";
     closeRef.current?.focus();
 
@@ -980,6 +982,7 @@ function ContactPanel({
     return () => {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", onKeyDown);
+      previousFocusRef.current?.focus();
     };
   }, [onClose, open, panelId]);
 
@@ -1096,7 +1099,12 @@ function BackToTop() {
           type="button"
           className="back-to-top"
           aria-label="Back to top"
-          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          onClick={() =>
+            window.scrollTo({
+              top: 0,
+              behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+            })
+          }
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.8 }}
@@ -1185,7 +1193,7 @@ export default function PortfolioPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
       <SmoothScroll />
       <CursorAura />
-      <motion.div className="scroll-progress" style={{ scaleX: progress }} />
+      <motion.div className="scroll-progress" style={{ scaleX: progress }} aria-hidden />
       <div className="page-shell">
         <Header
           theme={theme}
@@ -1193,7 +1201,7 @@ export default function PortfolioPage() {
           activeSection={activeSection}
           onOpenContact={() => setContactOpen(true)}
         />
-        <main id="main-content">
+        <main id="main-content" tabIndex={-1}>
           <Hero onOpenContact={() => setContactOpen(true)} />
           <SignalMarquee />
           <About />

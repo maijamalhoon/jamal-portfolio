@@ -182,7 +182,11 @@ export default function GitHubLive() {
       const nextSnapshot = { profile, repos, fetchedAt: Date.now() };
       setSnapshot(nextSnapshot);
       setState("live");
-      window.localStorage.setItem(CACHE_KEY, JSON.stringify(nextSnapshot));
+      try {
+        window.localStorage.setItem(CACHE_KEY, JSON.stringify(nextSnapshot));
+      } catch {
+        // Live data remains visible when storage is unavailable or full.
+      }
     } catch {
       if (cached) {
         setSnapshot({ ...cached, repos: normalizeRepos(cached.repos) });
@@ -341,8 +345,8 @@ export default function GitHubLive() {
             <p>The portfolio repository is intentionally excluded, keeping this feed focused on separate products and proof of work.</p>
           </motion.div>
 
-          <div className="github-repo-grid" aria-live="polite">
-            {snapshot.repos.map((repo, index) => (
+          <div className="github-repo-grid" aria-live="polite" aria-busy={refreshing}>
+            {snapshot.repos.length ? snapshot.repos.map((repo, index) => (
               <motion.article
                 className="github-repo-card"
                 key={repo.id}
@@ -373,7 +377,15 @@ export default function GitHubLive() {
                   {repo.homepage ? <a href={repo.homepage} target="_blank" rel="noreferrer">Live project <ArrowUpRight size={16} /></a> : null}
                 </div>
               </motion.article>
-            ))}
+            )) : (
+              <div className="github-empty-state">
+                <div>
+                  <strong>New public work will appear here automatically.</strong>
+                  <p>No separate public repository is available right now. The live GitHub profile remains accessible, and this section will update after the next public project is published.</p>
+                  <a href={snapshot.profile.html_url} target="_blank" rel="noreferrer">Open GitHub profile</a>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
