@@ -5,7 +5,7 @@ import { DownloadButton } from "./print-button";
 import styles from "./resume.module.css";
 
 export const metadata: Metadata = {
-  title: "Résumé | Jamal Yaqoob",
+  title: "Résumé",
   description: "Professional résumé of Jamal Yaqoob, accounting and finance professional.",
 };
 
@@ -15,12 +15,12 @@ const roles = [
     title: "Assistant Accountant",
     period: "Jun 2025 — Present",
     points: [
-      "Handling complete accounts operations and financial records",
+      "Managing end-to-end accounting operations and financial records",
       "Preparing employee salaries and management payments",
       "Managing sales, recovery, CR and MRS commissions",
-      "Cash receipts, payments and bank reconciliation",
-      "Multi-bank entries, ledgers and journal vouchers",
-      "Preparing daily reports, cash-flow records and documentation",
+      "Recording cash receipts and payments and performing bank reconciliation",
+      "Maintaining multi-bank entries, ledgers and journal vouchers",
+      "Preparing daily reports, cash-flow records and finance documentation",
       "Working with DMS and Toyota systems",
     ],
   },
@@ -29,11 +29,11 @@ const roles = [
     title: "Cashier",
     period: "Nov 2024 — Jun 2025",
     points: [
-      "Cash, card, corporate and warranty billing",
-      "Creative DMS invoicing and receipt processing",
-      "Daily settlements, cash closing and reporting",
-      "Customer interaction during peak hours",
-      "Accurate POS operations",
+      "Managed cash, card, corporate and warranty billing",
+      "Processed CREATIVE DMS invoices and receipts",
+      "Completed daily settlements, cash closing and reporting",
+      "Supported customers accurately during peak hours",
+      "Maintained reliable POS operations",
     ],
   },
   {
@@ -41,10 +41,10 @@ const roles = [
     title: "Cashier",
     period: "Apr 2024 — Nov 2024",
     points: [
-      "Cash, card, corporate and warranty billing",
-      "Cash handling, reconciliation and end-of-day reporting",
-      "POS operations and invoice accuracy",
-      "Customer service and counter management",
+      "Managed cash, card, corporate and warranty billing",
+      "Completed reconciliation and end-of-day reporting",
+      "Maintained POS operations and invoice accuracy",
+      "Delivered responsive customer service and counter management",
     ],
   },
 ];
@@ -52,8 +52,8 @@ const roles = [
 const skills = [
   "MS Office", "ERP Systems", "DMS Software", "Cash Handling", "Bank Reconciliation",
   "Journal Entries", "Ledger Management", "Salary Processing", "Commission Handling",
-  "Financial Reporting", "Customer Dealing", "POS Operations", "IT Support",
-  "System Troubleshooting", "Networking", "Problem Solving", "Team Work", "Quick Learning",
+  "Financial Reporting", "Customer Service", "POS Operations", "IT Support",
+  "System Troubleshooting", "Networking", "Problem Solving", "Teamwork", "Adaptability",
 ];
 
 export default function ResumePage() {
@@ -78,7 +78,7 @@ export default function ResumePage() {
           </div>
           <div className={styles.identity}>
             <h1>JAMAL YAQOOB</h1>
-            <p>ACCOUNTING AND FINANCE</p>
+            <p>ACCOUNTING, FINANCE &amp; SYSTEMS</p>
           </div>
         </header>
 
@@ -87,9 +87,12 @@ export default function ResumePage() {
             <section className={styles.section}>
               <h2>Contact</h2>
               <ul className={styles.contact}>
-                <li>0328-2685435</li>
-                <li>jamalarain186@gmail.com</li>
-                <li>DHA, Phase I, Karachi</li>
+                <li><a href="tel:+923282685435">+92 328 2685435</a></li>
+                <li><a href="mailto:jamalarain186@gmail.com">jamalarain186@gmail.com</a></li>
+                <li>DHA Phase I, Karachi</li>
+                <li><a href="https://maijamalhoon.github.io/jamal-portfolio/" target="_blank" rel="noreferrer">Portfolio</a></li>
+                <li><a href="https://pk.linkedin.com/in/jamalarain-it" target="_blank" rel="noreferrer">LinkedIn</a></li>
+                <li><a href="https://github.com/maijamalhoon" target="_blank" rel="noreferrer">GitHub</a></li>
               </ul>
             </section>
 
@@ -113,9 +116,9 @@ export default function ResumePage() {
             <section className={styles.section}>
               <h2>Profile</h2>
               <p className={styles.profile}>
-                Accounts professional with practical experience in finance operations, ERP systems and reporting.
-                Currently managing salary processing, commission calculations and complete financial records, with
-                a strong understanding of automobile dealership operations and a focus on accuracy, efficiency and growth.
+                Accounts professional with practical experience in finance operations, ERP/DMS systems and reporting.
+                Currently managing salary processing, commission calculations and financial records, with a strong
+                understanding of automobile dealership operations and a focus on accuracy, efficiency and growth.
               </p>
             </section>
 
