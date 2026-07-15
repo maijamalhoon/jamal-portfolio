@@ -1,0 +1,98 @@
+name: Mobile performance diagnostic
+
+on:
+  push:
+    paths:
+      - .github/PERFORMANCE_DIAGNOSTIC
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Build production export
+        env:
+          NEXT_PUBLIC_SITE_URL: https://maijamalhoon.github.io/jamal-portfolio
+        run: npm run build
+      - name: Start production preview
+        run: |
+          npm start > /tmp/server.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:3000/ >/dev/null && exit 0; sleep 1; done
+          cat /tmp/server.log
+          exit 1
+      - name: Install audit browser
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.55.0 lighthouse@12.8.2
+          npx playwright install --with-deps chromium
+      - name: Run mobile Lighthouse
+        run: |
+          CHROME_PATH="$(node -e "const { chromium } = require('@playwright/test'); process.stdout.write(chromium.executablePath())")"
+          npx lighthouse http://127.0.0.1:3000/ --quiet \
+            --chrome-path="$CHROME_PATH" --chrome-flags="--headless --no-sandbox" \
+            --only-categories=performance --output=json --output-path=/tmp/lighthouse-mobile.json
+      - name: Generate diagnostic report
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const report = JSON.parse(fs.readFileSync('/tmp/lighthouse-mobile.json', 'utf8'));
+          const audits = report.audits;
+          const metricIds = [
+            'first-contentful-paint','largest-contentful-paint','speed-index',
+            'total-blocking-time','interactive','cumulative-layout-shift','max-potential-fid'
+          ];
+          const focusIds = [
+            'server-response-time','render-blocking-resources','unused-javascript','unused-css-rules',
+            'total-byte-weight','mainthread-work-breakdown','bootup-time','long-tasks',
+            'network-requests','third-party-summary','largest-contentful-paint-element',
+            'lcp-lazy-loaded','uses-responsive-images','modern-image-formats','offscreen-images',
+            'efficient-animated-content','font-display','dom-size'
+          ];
+          const lines = [];
+          lines.push('# Mobile Performance Diagnostic', '');
+          lines.push(`Performance score: **${Math.round(report.categories.performance.score * 100)}**`, '');
+          lines.push('## Core metrics', '', '| Metric | Value | Score |', '|---|---:|---:|');
+          for (const id of metricIds) {
+            const audit = audits[id];
+            if (audit) lines.push(`| ${audit.title} | ${audit.displayValue ?? audit.numericValue ?? ''} | ${Math.round((audit.score ?? 0) * 100)} |`);
+          }
+          lines.push('', '## High-impact diagnostics', '');
+          for (const id of focusIds) {
+            const audit = audits[id];
+            if (!audit) continue;
+            lines.push(`### ${audit.title}`);
+            lines.push(`- Score: ${audit.score === null ? 'n/a' : Math.round(audit.score * 100)}`);
+            if (audit.displayValue) lines.push(`- Value: ${audit.displayValue}`);
+            if (audit.description) lines.push(`- Description: ${audit.description.replace(/\[[^\]]+\]\([^\)]+\)/g, '').slice(0, 500)}`);
+            const items = audit.details?.items;
+            if (Array.isArray(items) && items.length) {
+              lines.push('- Top items:');
+              for (const item of items.slice(0, 8)) {
+                const compact = Object.fromEntries(Object.entries(item).filter(([key, value]) =>
+                  ['url','totalBytes','wastedBytes','wastedMs','duration','mainThreadTime','scriptParseCompile','transferSize','resourceSize','requestCount','entity'].includes(key) && value !== undefined
+                ));
+                lines.push(`  - ${JSON.stringify(compact).slice(0, 600)}`);
+              }
+            }
+            lines.push('');
+          }
+          fs.writeFileSync('PERFORMANCE_DIAGNOSTIC.md', lines.join('\n'));
+          NODE
+      - name: Publish diagnostic
+        if: always()
+        run: |
+          rm -f .github/PERFORMANCE_DIAGNOSTIC .github/workflows/performance-diagnostic.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "audit: publish mobile performance diagnostic"
+          git pull --rebase origin main
+          git push
