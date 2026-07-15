@@ -47,14 +47,14 @@ text(42, 433, 12, "CORE SKILLS", true);
 text(42, 415, 9, "Bank Reconciliation  |  Journal Entries  |  Ledger Management  |  Salary Processing");
 text(42, 401, 9, "Commission Handling  |  Financial Reporting  |  Cash Handling  |  POS Operations");
 text(42, 387, 9, "ERP Systems  |  DMS Software  |  MS Office  |  IT Support  |  Troubleshooting");
-text(42, 373, 9, "Networking  |  Problem Solving  |  Customer Dealing  |  Team Work  |  Quick Learning");
+text(42, 373, 9, "Networking  |  Problem Solving  |  Customer Service  |  Teamwork  |  Adaptability");
 
 text(42, 343, 12, "EDUCATION", true);
 text(42, 325, 10.5, "Bachelor's in Computer Science", true);
 text(42, 310, 9, "Allama Iqbal Open University | 2025 - Present");
 
 text(42, 280, 12, "PROJECTS & PROFESSIONAL LINKS", true);
-text(42, 262, 9, "Portfolio: https://jamal-portfolio.vercel.app");
+text(42, 262, 9, "Portfolio: https://maijamalhoon.github.io/jamal-portfolio/");
 text(42, 248, 9, "GitHub: https://github.com/maijamalhoon");
 text(42, 234, 9, "LinkedIn: https://pk.linkedin.com/in/jamalarain-it");
 text(42, 220, 9, "Jamal's Finance: https://jamals-finance-sable.vercel.app");
