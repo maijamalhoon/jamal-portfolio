@@ -1,0 +1,81 @@
+name: Performance diagnostic v2
+
+on:
+  push:
+    paths:
+      - .github/PERF_DIAGNOSTIC_V2
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        id: install
+        continue-on-error: true
+        run: npm ci > /tmp/install.log 2>&1
+      - name: Check
+        id: check
+        if: steps.install.outcome == 'success'
+        continue-on-error: true
+        env:
+          GITHUB_ACTIONS: "true"
+          NEXT_PUBLIC_SITE_URL: https://maijamalhoon.github.io/jamal-portfolio
+        run: npm run check > /tmp/check.log 2>&1
+      - name: Start server
+        id: server
+        if: steps.check.outcome == 'success'
+        continue-on-error: true
+        run: |
+          npm start > /tmp/server.log 2>&1 &
+          for attempt in {1..40}; do
+            if curl -fsS http://127.0.0.1:3000/jamal-portfolio/ >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          exit 1
+      - name: Install browser
+        id: browser
+        if: steps.server.outcome == 'success'
+        continue-on-error: true
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.55.0 lighthouse@12.8.2 > /tmp/browser.log 2>&1
+          npx playwright install --with-deps chromium >> /tmp/browser.log 2>&1
+      - name: Lighthouse
+        id: lighthouse
+        if: steps.browser.outcome == 'success'
+        continue-on-error: true
+        run: |
+          CHROME_PATH="$(node -e "const { chromium } = require('@playwright/test'); process.stdout.write(chromium.executablePath())")"
+          npx lighthouse http://127.0.0.1:3000/jamal-portfolio/ --quiet --chrome-path="$CHROME_PATH" --chrome-flags="--headless --no-sandbox" --only-categories=performance,accessibility,best-practices,seo --output=json --output-path=/tmp/mobile.json > /tmp/lighthouse.log 2>&1
+          npx lighthouse http://127.0.0.1:3000/jamal-portfolio/ --quiet --chrome-path="$CHROME_PATH" --chrome-flags="--headless --no-sandbox" --preset=desktop --only-categories=performance,accessibility,best-practices,seo --output=json --output-path=/tmp/desktop.json >> /tmp/lighthouse.log 2>&1
+      - name: Write diagnostic
+        if: always()
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const read = p => fs.existsSync(p) ? fs.readFileSync(p,'utf8').slice(-12000) : 'not available';
+          const score = p => {
+            if (!fs.existsSync(p)) return null;
+            const r = JSON.parse(fs.readFileSync(p,'utf8'));
+            const c = r.categories, a = r.audits;
+            return { performance: Math.round(c.performance.score*100), accessibility: Math.round(c.accessibility.score*100), bestPractices: Math.round(c['best-practices'].score*100), seo: Math.round(c.seo.score*100), fcp:a['first-contentful-paint'].displayValue, lcp:a['largest-contentful-paint'].displayValue, tbt:a['total-blocking-time'].displayValue, cls:a['cumulative-layout-shift'].displayValue, speedIndex:a['speed-index'].displayValue };
+          };
+          const mobile=score('/tmp/mobile.json'), desktop=score('/tmp/desktop.json');
+          const md = `# Performance diagnostic v2\n\n## Outcomes\n\n- Install: ${{ steps.install.outcome }}\n- Check: ${{ steps.check.outcome }}\n- Server: ${{ steps.server.outcome }}\n- Browser: ${{ steps.browser.outcome }}\n- Lighthouse: ${{ steps.lighthouse.outcome }}\n\n## Scores\n\n\`\`\`json\n${JSON.stringify({mobile,desktop},null,2)}\n\`\`\`\n\n## Check log\n\n\`\`\`text\n${read('/tmp/check.log')}\n\`\`\`\n\n## Server log\n\n\`\`\`text\n${read('/tmp/server.log')}\n\`\`\`\n\n## Lighthouse log\n\n\`\`\`text\n${read('/tmp/lighthouse.log')}\n\`\`\`\n`;
+          fs.writeFileSync('PERF_DIAGNOSTIC_V2.md',md);
+          NODE
+          rm -f .github/PERF_DIAGNOSTIC_V2 .github/workflows/perf-diagnostic-v2.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "audit: publish performance diagnostic v2"
+          git pull --rebase origin main
+          git push
