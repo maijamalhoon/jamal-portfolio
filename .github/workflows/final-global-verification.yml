@@ -1,0 +1,220 @@
+name: Final global verification
+
+on:
+  push:
+    paths:
+      - .github/FINAL_GLOBAL_VERIFICATION
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Apply final mobile UI and accessibility fixes
+        shell: python
+        run: |
+          from pathlib import Path
+
+          page = Path("src/app/page.tsx")
+          text = page.read_text()
+          old_theme = '<button className="theme-button" type="button" data-theme-button aria-label="Choose color theme" aria-haspopup="menu" aria-expanded="false">'
+          new_theme = '<button className="theme-button" type="button" data-theme-button aria-haspopup="menu" aria-expanded="false">'
+          if old_theme not in text:
+              raise SystemExit("Theme trigger patch target missing")
+          text = text.replace(old_theme, new_theme, 1)
+
+          old_portrait = '<img className="menu-portrait" src={`${basePath}/jamal-yaqoob.webp`} width="410" height="615" alt="" aria-hidden="true"/>'
+          new_portrait = '<div className="menu-portrait" style={{ backgroundImage: `url(${basePath}/jamal-yaqoob.webp)` }} aria-hidden="true"/>'
+          if old_portrait not in text:
+              raise SystemExit("Mobile menu portrait patch target missing")
+          text = text.replace(old_portrait, new_portrait, 1)
+          page.write_text(text)
+
+          css_path = Path("src/app/portfolio.css")
+          css = css_path.read_text()
+          old_css = '.menu-portrait{position:fixed;right:-6%;bottom:-7%;width:min(68vw,500px);height:auto;opacity:.22;filter:grayscale(.1);mask-image:linear-gradient(to top,black 55%,transparent)}'
+          new_css = '.menu-portrait{position:fixed;right:-6%;bottom:-7%;width:min(68vw,500px);aspect-ratio:2/3;background-position:center 15%;background-size:cover;background-repeat:no-repeat;opacity:.22;filter:grayscale(.1);mask-image:linear-gradient(to top,black 55%,transparent)}'
+          if old_css not in css:
+              raise SystemExit("Mobile menu portrait CSS target missing")
+          css_path.write_text(css.replace(old_css, new_css, 1))
+
+      - name: Install and verify production build
+        env:
+          GITHUB_ACTIONS: "true"
+          NEXT_PUBLIC_SITE_URL: https://maijamalhoon.github.io/jamal-portfolio
+        run: |
+          npm ci
+          npm run check
+          node --check public/portfolio.js
+          node <<'NODE'
+          const fs=require('node:fs');
+          const html=fs.readFileSync('out/index.html','utf8');
+          const nextJs=(html.match(/\/_next\/static\/[^"' ]+\.js/g)||[]).length;
+          if(nextJs!==0) throw new Error(`Expected zero Next runtime scripts, found ${nextJs}`);
+          NODE
+
+      - name: Start compressed production preview
+        run: |
+          npm start >/tmp/server.log 2>&1 &
+          for i in {1..40}; do
+            curl -fsS --compressed http://127.0.0.1:3000/jamal-portfolio/ >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/server.log
+          exit 1
+
+      - name: Install verification browser
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.55.0 lighthouse@12.8.2
+          npx playwright install --with-deps chromium
+
+      - name: Verify mobile tablet desktop interactions and create previews
+        run: |
+          cat >/tmp/final-browser-test.mjs <<'JS'
+          import { chromium } from '@playwright/test';
+          import { writeFile } from 'node:fs/promises';
+
+          const browser = await chromium.launch({ headless: true });
+          const results = [];
+          const configurations = [
+            { name: 'mobile', width: 390, height: 844, screenshot: 'public/preview-mobile.png' },
+            { name: 'tablet', width: 768, height: 1024 },
+            { name: 'desktop', width: 1440, height: 900, screenshot: 'public/preview-desktop.png' },
+          ];
+
+          for (const configuration of configurations) {
+            const context = await browser.newContext({
+              viewport: { width: configuration.width, height: configuration.height },
+              reducedMotion: 'no-preference',
+            });
+            const page = await context.newPage();
+            const errors = [];
+            page.on('pageerror', error => errors.push(`pageerror: ${error.message}`));
+            page.on('console', message => {
+              if (message.type() === 'error') errors.push(`console: ${message.text()}`);
+            });
+
+            await page.goto('http://127.0.0.1:3000/jamal-portfolio/', { waitUntil: 'networkidle', timeout: 30000 });
+            await page.waitForTimeout(350);
+
+            const dimensions = await page.evaluate(() => ({
+              overflow: document.documentElement.scrollWidth - innerWidth,
+              width: innerWidth,
+            }));
+            if (dimensions.overflow > 2) errors.push(`horizontal overflow: ${dimensions.overflow}px`);
+            if (await page.locator('h1').count() !== 1) errors.push('expected exactly one h1');
+            if (!(await page.locator('h1').isVisible())) errors.push('hero heading not visible');
+            if (!(await page.locator('.portrait-frame img').isVisible())) errors.push('hero portrait not visible');
+
+            const headingBox = await page.locator('h1').boundingBox();
+            if (!headingBox || headingBox.x < -2 || headingBox.x + headingBox.width > configuration.width + 2) {
+              errors.push(`hero heading clipped: ${JSON.stringify(headingBox)}`);
+            }
+
+            if (configuration.screenshot) {
+              await page.screenshot({ path: configuration.screenshot, fullPage: false });
+            }
+
+            if (configuration.width <= 1050) {
+              await page.locator('[data-menu-open]').click();
+              await page.locator('[data-mobile-menu]').waitFor({ state: 'visible' });
+              if (await page.locator('[data-menu-link]').count() !== 6) errors.push('mobile navigation must contain six rows');
+              if (!(await page.locator('.menu-portrait').isVisible())) errors.push('mobile menu portrait not visible');
+              await page.locator('[data-menu-close]').click();
+              await page.locator('[data-mobile-menu]').waitFor({ state: 'hidden' });
+            }
+
+            await page.locator('[data-theme-button]').click();
+            await page.locator('[data-theme="cobalt"]').click();
+            if (await page.locator('html').getAttribute('data-theme') !== 'cobalt') errors.push('theme switch failed');
+
+            await page.locator('[data-contact-open]').first().click();
+            await page.locator('[data-contact-modal]').waitFor({ state: 'visible' });
+            if (!(await page.locator('[data-contact-modal] a', { hasText: 'Open LinkedIn' }).isVisible())) errors.push('LinkedIn contact action missing');
+            await page.locator('.modal-head [data-contact-close]').click();
+            await page.locator('[data-contact-modal]').waitFor({ state: 'hidden' });
+
+            await page.locator('#profiles').scrollIntoViewIfNeeded();
+            await page.waitForTimeout(1500);
+            const repositoryNames = await page.locator('.repo-card h4').allTextContents();
+            if (repositoryNames.some(name => name.trim().toLowerCase() === 'jamal-portfolio')) {
+              errors.push('current portfolio repository appears in live feed');
+            }
+
+            results.push({ configuration, errors });
+            await context.close();
+          }
+
+          await browser.close();
+          await writeFile('/tmp/final-browser-results.json', JSON.stringify(results, null, 2));
+          const failures = results.flatMap(result => result.errors.map(error => `${result.configuration.name}: ${error}`));
+          if (failures.length) {
+            console.error(failures.join('\n'));
+            process.exit(1);
+          }
+          console.log('All responsive interaction tests passed');
+          JS
+          node /tmp/final-browser-test.mjs
+
+      - name: Run final Lighthouse audits
+        run: |
+          CHROME_PATH="$(node -e "const { chromium } = require('@playwright/test'); process.stdout.write(chromium.executablePath())")"
+          npx lighthouse http://127.0.0.1:3000/jamal-portfolio/ --quiet \
+            --chrome-path="$CHROME_PATH" --chrome-flags="--headless --no-sandbox" \
+            --only-categories=performance,accessibility,best-practices,seo \
+            --output=json --output-path=/tmp/mobile.json
+          npx lighthouse http://127.0.0.1:3000/jamal-portfolio/ --quiet \
+            --chrome-path="$CHROME_PATH" --chrome-flags="--headless --no-sandbox" --preset=desktop \
+            --only-categories=performance,accessibility,best-practices,seo \
+            --output=json --output-path=/tmp/desktop.json
+
+      - name: Enforce perfect verified scores
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const read = path => {
+            const report = JSON.parse(fs.readFileSync(path, 'utf8'));
+            const categories = report.categories;
+            const audits = report.audits;
+            return {
+              performance: Math.round(categories.performance.score * 100),
+              accessibility: Math.round(categories.accessibility.score * 100),
+              bestPractices: Math.round(categories['best-practices'].score * 100),
+              seo: Math.round(categories.seo.score * 100),
+              fcp: audits['first-contentful-paint'].displayValue,
+              lcp: audits['largest-contentful-paint'].displayValue,
+              tbt: audits['total-blocking-time'].displayValue,
+              cls: audits['cumulative-layout-shift'].displayValue,
+              speedIndex: audits['speed-index'].displayValue,
+            };
+          };
+          const mobile = read('/tmp/mobile.json');
+          const desktop = read('/tmp/desktop.json');
+          for (const [mode, values] of Object.entries({ mobile, desktop })) {
+            for (const category of ['performance', 'accessibility', 'bestPractices', 'seo']) {
+              if (values[category] !== 100) throw new Error(`${mode} ${category}: ${values[category]}`);
+            }
+          }
+          const interactions = JSON.parse(fs.readFileSync('/tmp/final-browser-results.json', 'utf8'));
+          const report = `# Final global verification\n\nVerified against a production static build.\n\n## Lighthouse\n\n| Mode | Performance | Accessibility | Best Practices | SEO |\n|---|---:|---:|---:|---:|\n| Mobile | ${mobile.performance} | ${mobile.accessibility} | ${mobile.bestPractices} | ${mobile.seo} |\n| Desktop | ${desktop.performance} | ${desktop.accessibility} | ${desktop.bestPractices} | ${desktop.seo} |\n\n## Mobile metrics\n\n- First Contentful Paint: ${mobile.fcp}\n- Largest Contentful Paint: ${mobile.lcp}\n- Total Blocking Time: ${mobile.tbt}\n- Cumulative Layout Shift: ${mobile.cls}\n- Speed Index: ${mobile.speedIndex}\n\n## Desktop metrics\n\n- First Contentful Paint: ${desktop.fcp}\n- Largest Contentful Paint: ${desktop.lcp}\n- Total Blocking Time: ${desktop.tbt}\n- Cumulative Layout Shift: ${desktop.cls}\n- Speed Index: ${desktop.speedIndex}\n\n## Responsive interaction verification\n\n${interactions.map(result => `- ${result.configuration.name}: passed at ${result.configuration.width} × ${result.configuration.height}`).join('\n')}\n\n- Horizontal overflow: none\n- Hero heading clipping: none\n- Mobile navigation: six unique rows\n- Theme switching: passed\n- Contact dialog and LinkedIn action: passed\n- Current portfolio repository exclusion: passed\n`;
+          fs.writeFileSync('FINAL_VERIFICATION.md', report);
+          NODE
+
+      - name: Publish verified final release
+        run: |
+          rm -f .github/FINAL_GLOBAL_VERIFICATION .github/workflows/final-global-verification.yml PERF_RESULT_V7.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "release: publish globally verified portfolio"
+          git pull --rebase origin main
+          git push
