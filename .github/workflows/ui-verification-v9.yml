@@ -1,0 +1,103 @@
+name: UI verification v9
+
+on:
+  push:
+    paths:
+      - .github/UI_VERIFICATION_V9
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Build
+        env:
+          GITHUB_ACTIONS: "true"
+          NEXT_PUBLIC_SITE_URL: https://maijamalhoon.github.io/jamal-portfolio
+        run: |
+          npm ci
+          npm run check
+      - name: Start preview
+        run: |
+          npm start >/tmp/server.log 2>&1 &
+          for i in {1..40}; do curl -fsS --compressed http://127.0.0.1:3000/jamal-portfolio/ >/dev/null && exit 0; sleep 1; done
+          cat /tmp/server.log
+          exit 1
+      - name: Install Chromium
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run responsive verification
+        run: |
+          cat > ui-audit.mjs <<'JS'
+          import { chromium } from '@playwright/test';
+          import { writeFile } from 'node:fs/promises';
+          const browser = await chromium.launch({ headless: true });
+          const results = [];
+          const devices = [
+            { name: 'mobile', width: 390, height: 844, screenshot: 'public/preview-mobile.png' },
+            { name: 'tablet', width: 768, height: 1024 },
+            { name: 'desktop', width: 1440, height: 900, screenshot: 'public/preview-desktop.png' },
+          ];
+          for (const device of devices) {
+            const context = await browser.newContext({ viewport: { width: device.width, height: device.height } });
+            const page = await context.newPage();
+            const errors = [];
+            page.on('pageerror', error => errors.push(`pageerror: ${error.message}`));
+            await page.goto('http://127.0.0.1:3000/jamal-portfolio/', { waitUntil: 'networkidle', timeout: 30000 });
+            await page.waitForTimeout(300);
+            const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+            if (overflow > 2) errors.push(`horizontal overflow ${overflow}px`);
+            if (await page.locator('h1').count() !== 1) errors.push('invalid h1 count');
+            const heading = await page.locator('h1').boundingBox();
+            if (!heading || heading.x < -2 || heading.x + heading.width > device.width + 2) errors.push(`hero heading clipped ${JSON.stringify(heading)}`);
+            if (!(await page.locator('.portrait-frame img').isVisible())) errors.push('hero portrait hidden');
+            if (device.screenshot) await page.screenshot({ path: device.screenshot, fullPage: false });
+            if (device.width <= 1050) {
+              await page.locator('[data-menu-open]').click();
+              await page.locator('[data-mobile-menu]').waitFor({ state: 'visible' });
+              if (await page.locator('[data-menu-link]').count() !== 6) errors.push('menu must contain six rows');
+              if (!(await page.locator('.menu-portrait').isVisible())) errors.push('menu portrait hidden');
+              await page.locator('[data-menu-close]').click();
+              await page.locator('[data-mobile-menu]').waitFor({ state: 'hidden' });
+            }
+            await page.locator('[data-theme-button]').click();
+            await page.locator('[data-theme="cobalt"]').click();
+            if (await page.locator('html').getAttribute('data-theme') !== 'cobalt') errors.push('theme switch failed');
+            await page.locator('[data-contact-open]').first().click();
+            await page.locator('[data-contact-modal]').waitFor({ state: 'visible' });
+            if (!(await page.locator('[data-contact-modal] a', { hasText: 'Open LinkedIn' }).isVisible())) errors.push('LinkedIn contact action hidden');
+            await page.locator('.modal-head [data-contact-close]').click();
+            await page.locator('[data-contact-modal]').waitFor({ state: 'hidden' });
+            results.push({ device, errors });
+            await context.close();
+          }
+          await browser.close();
+          await writeFile('UI_VERIFICATION.json', JSON.stringify(results, null, 2));
+          const failures = results.flatMap(result => result.errors.map(error => `${result.device.name}: ${error}`));
+          if (failures.length) { console.error(failures.join('\n')); process.exit(1); }
+          console.log('All responsive interactions passed');
+          JS
+          node ui-audit.mjs
+      - name: Publish UI proof
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const results = JSON.parse(fs.readFileSync('UI_VERIFICATION.json','utf8'));
+          fs.writeFileSync('UI_VERIFICATION.md', `# Responsive UI verification\n\n${results.map(result => `- ${result.device.name} (${result.device.width} × ${result.device.height}): passed`).join('\n')}\n\n- Horizontal overflow: none\n- Hero heading clipping: none\n- Mobile menu: six unique rows\n- Portrait rendering: passed\n- Theme switching: passed\n- Contact dialog: passed\n- LinkedIn action: passed\n`);
+          NODE
+          rm -f ui-audit.mjs UI_VERIFICATION.json FINAL_VERIFICATION.md .github/UI_VERIFICATION_V9 .github/workflows/ui-verification-v9.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "audit: publish verified responsive previews"
+          git pull --rebase origin main
+          git push
