@@ -1,0 +1,72 @@
+name: Mobile diagnostic
+
+on:
+  push:
+    paths:
+      - .github/workflows/mobile-diagnostic.yml
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: preview
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Build
+        env:
+          GITHUB_ACTIONS: "true"
+          NEXT_PUBLIC_SITE_URL: https://maijamalhoon.github.io/jamal-portfolio
+        run: |
+          npm ci
+          npm run check
+      - name: Start preview
+        run: |
+          npm start >/tmp/server.log 2>&1 &
+          for i in {1..40}; do curl -fsS --compressed http://127.0.0.1:3000/jamal-portfolio/ >/dev/null && exit 0; sleep 1; done
+          cat /tmp/server.log
+          exit 1
+      - name: Run detailed mobile audit
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.55.0 lighthouse@12.8.2
+          npx playwright install --with-deps chromium
+          CHROME_PATH="$(node -e "const { chromium } = require('@playwright/test'); process.stdout.write(chromium.executablePath())")"
+          npx lighthouse http://127.0.0.1:3000/jamal-portfolio/ --quiet \
+            --chrome-path="$CHROME_PATH" --chrome-flags="--headless --no-sandbox" \
+            --only-categories=performance,accessibility,best-practices,seo \
+            --output=json --output-path=/tmp/mobile.json
+          node <<'NODE'
+          const fs = require('node:fs');
+          const report = JSON.parse(fs.readFileSync('/tmp/mobile.json', 'utf8'));
+          const categories = Object.fromEntries(Object.entries(report.categories).map(([id, c]) => [id, Math.round(c.score * 100)]));
+          const failedAccessibility = report.categories.accessibility.auditRefs
+            .map((ref) => ({ ref, audit: report.audits[ref.id] }))
+            .filter(({ audit }) => audit && audit.score !== null && audit.score < 1)
+            .map(({ ref, audit }) => ({ id: audit.id, title: audit.title, score: audit.score, weight: ref.weight, description: audit.description, details: audit.details }));
+          const performanceIds = [
+            'first-contentful-paint','largest-contentful-paint','speed-index','total-blocking-time','cumulative-layout-shift','interactive','max-potential-fid',
+            'mainthread-work-breakdown','bootup-time','long-tasks','diagnostics','network-requests','resource-summary','unused-css-rules','offscreen-images','render-blocking-resources','third-party-summary','dom-size','forced-reflow-insight','network-dependency-tree-insight'
+          ];
+          const performance = Object.fromEntries(performanceIds.filter((id) => report.audits[id]).map((id) => {
+            const a = report.audits[id];
+            return [id, { score: a.score, displayValue: a.displayValue, numericValue: a.numericValue, details: a.details }];
+          }));
+          fs.writeFileSync('MOBILE_DIAGNOSTIC.md', `# Mobile Lighthouse diagnostic\n\n## Categories\n\n\`\`\`json\n${JSON.stringify(categories, null, 2)}\n\`\`\`\n\n## Accessibility failures\n\n\`\`\`json\n${JSON.stringify(failedAccessibility, null, 2)}\n\`\`\`\n\n## Performance details\n\n\`\`\`json\n${JSON.stringify(performance, null, 2)}\n\`\`\`\n`);
+          NODE
+      - name: Publish diagnostic
+        if: always()
+        run: |
+          rm -f .github/workflows/mobile-diagnostic.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "audit: publish targeted mobile diagnostic" || true
+          git pull --rebase origin preview
+          git push origin HEAD:preview
