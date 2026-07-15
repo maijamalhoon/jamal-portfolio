@@ -7,8 +7,9 @@
   },
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node scripts/generate-resume.mjs",
+    "prebuild": "node scripts/generate-resume.mjs && node scripts/generate-portrait.mjs",
     "build": "next build",
+    "postbuild": "node scripts/strip-next-runtime.mjs",
     "start": "node scripts/serve-static.mjs",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
