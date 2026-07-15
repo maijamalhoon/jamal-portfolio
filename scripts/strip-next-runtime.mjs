@@ -4,7 +4,7 @@ const targets = ["out/index.html"];
 for (const target of targets) {
   if (!existsSync(target)) continue;
   let html = readFileSync(target, "utf8");
-  html = html.replace(/<link\b[^>]*(?:rel=["'](?:modulepreload|preload)["'])[^>]*href=["'][^"']*\/_next\/static\/[^"']*\.js[^"']*["'][^>]*>/gi, "");
+  html = html.replace(/<link\b(?=[^>]*href=["'][^"']*\/_next\/static\/[^"']*\.js[^"']*["'])[^>]*>/gi, "");
   html = html.replace(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi, (full, attrs, body) => {
     const src = attrs.match(/src=["']([^"']+)["']/i)?.[1] ?? "";
     const type = attrs.match(/type=["']([^"']+)["']/i)?.[1] ?? "";
