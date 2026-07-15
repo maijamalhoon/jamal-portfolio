@@ -1,0 +1,193 @@
+name: Mobile perfect audit
+
+on:
+  push:
+    paths:
+      - .github/workflows/mobile-perfect-audit.yml
+
+permissions:
+  contents: write
+
+jobs:
+  optimize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: preview
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Apply precise source fixes
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          page_path = Path('src/app/page.tsx')
+          page = page_path.read_text()
+          page = page.replace(
+              '<a className="brand" href="#home" aria-label="Jamal Yaqoob home">',
+              '<a className="brand" href="#home">',
+              1,
+          )
+          page = page.replace(
+              '<button className="theme-button" type="button" data-theme-button aria-haspopup="menu" aria-expanded="false">',
+              '<button className="theme-button" type="button" data-theme-button aria-label="Choose color theme: Noir" aria-haspopup="menu" aria-expanded="false" aria-controls="theme-menu">',
+              1,
+          )
+          page = page.replace(
+              '<div className="theme-popover" data-theme-menu role="menu" aria-label="Color themes" hidden>',
+              '<div className="theme-popover" id="theme-menu" data-theme-menu role="menu" aria-label="Color themes" hidden>',
+              1,
+          )
+          page = page.replace(
+              '<div className="mobile-menu" id="mobile-menu" data-mobile-menu hidden>',
+              '<div className="mobile-menu" id="mobile-menu" data-mobile-menu role="dialog" aria-modal="true" aria-label="Navigation menu" hidden>',
+              1,
+          )
+          page_path.write_text(page)
+
+          js_path = Path('public/portfolio.js')
+          js = js_path.read_text()
+          js = js.replace(
+              "    const label = one('[data-theme-label]');\n    if (label) label.textContent = themeNames[selected];",
+              "    const label = one('[data-theme-label]');\n    const trigger = one('[data-theme-button]');\n    if (label) label.textContent = themeNames[selected];\n    trigger?.setAttribute('aria-label', `Choose color theme: ${themeNames[selected]}`);",
+              1,
+          )
+          js = js.replace(
+              "  const closeThemeMenu = () => {",
+              "  setTheme(html.dataset.theme || 'noir');\n\n  const closeThemeMenu = () => {",
+              1,
+          )
+          js_path.write_text(js)
+
+          css_path = Path('src/app/performance-overrides.css')
+          css = css_path.read_text()
+          marker = '/* Final mobile render budget */'
+          if marker not in css:
+              css += '''\n\n/* Final mobile render budget */\n.capability-strip {\n  content-visibility: auto;\n  contain-intrinsic-size: 58px;\n}\n\n@media (max-width: 760px) {\n  body {\n    background: var(--bg);\n    text-rendering: auto;\n  }\n\n  .availability,\n  .hero h1,\n  .hero-copy > p,\n  .hero-actions,\n  .hero-meta,\n  .portrait-stage,\n  .float-chip,\n  .capability-strip > div,\n  .scroll-cue .icon,\n  .profile-skeleton i,\n  .repo-placeholder i {\n    animation: none !important;\n  }\n\n  .hero-grid-bg { opacity: .22; }\n  .portrait-orbit { display: none; }\n  .portrait-frame,\n  .float-chip { box-shadow: none; }\n\n  .section,\n  .education-section,\n  .contact,\n  footer {\n    contain: layout paint style;\n  }\n}\n'''
+          css_path.write_text(css)
+          PY
+
+      - name: Install and build optimized release
+        id: build
+        continue-on-error: true
+        env:
+          GITHUB_ACTIONS: "true"
+          NEXT_PUBLIC_SITE_URL: https://maijamalhoon.github.io/jamal-portfolio
+        run: |
+          npm ci
+          npm run check
+          node --check public/portfolio.js
+
+      - name: Start production preview
+        id: server
+        if: steps.build.outcome == 'success'
+        continue-on-error: true
+        run: |
+          npm start >/tmp/server.log 2>&1 &
+          for i in {1..40}; do curl -fsS --compressed http://127.0.0.1:3000/jamal-portfolio/ >/dev/null && exit 0; sleep 1; done
+          cat /tmp/server.log
+          exit 1
+
+      - name: Install Chromium and Lighthouse
+        id: browser
+        if: steps.server.outcome == 'success'
+        continue-on-error: true
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.55.0 lighthouse@12.8.2
+          npx playwright install --with-deps chromium
+
+      - name: Audit optimized mobile and desktop
+        id: lighthouse
+        if: steps.browser.outcome == 'success'
+        continue-on-error: true
+        run: |
+          CHROME_PATH="$(node -e "const { chromium } = require('@playwright/test'); process.stdout.write(chromium.executablePath())")"
+          npx lighthouse http://127.0.0.1:3000/jamal-portfolio/ --quiet --chrome-path="$CHROME_PATH" --chrome-flags="--headless --no-sandbox" --only-categories=performance,accessibility,best-practices,seo --output=json --output-path=/tmp/mobile.json
+          npx lighthouse http://127.0.0.1:3000/jamal-portfolio/ --quiet --chrome-path="$CHROME_PATH" --chrome-flags="--headless --no-sandbox" --preset=desktop --only-categories=performance,accessibility,best-practices,seo --output=json --output-path=/tmp/desktop.json
+          node <<'NODE'
+          const fs = require('node:fs');
+          const read = (path) => {
+            const r = JSON.parse(fs.readFileSync(path, 'utf8'));
+            const c = r.categories, a = r.audits;
+            return {
+              performance: Math.round(c.performance.score * 100),
+              accessibility: Math.round(c.accessibility.score * 100),
+              bestPractices: Math.round(c['best-practices'].score * 100),
+              seo: Math.round(c.seo.score * 100),
+              fcp: a['first-contentful-paint'].displayValue,
+              lcp: a['largest-contentful-paint'].displayValue,
+              tbt: a['total-blocking-time'].displayValue,
+              cls: a['cumulative-layout-shift'].displayValue,
+              speedIndex: a['speed-index'].displayValue,
+            };
+          };
+          const result = { mobile: read('/tmp/mobile.json'), desktop: read('/tmp/desktop.json') };
+          fs.writeFileSync('/tmp/perfect-result.json', JSON.stringify(result, null, 2));
+          console.log(result);
+          if (!Object.values(result).every((mode) => mode.performance === 100 && mode.accessibility === 100 && mode.bestPractices === 100 && mode.seo === 100)) process.exit(1);
+          NODE
+
+      - name: Verify optimized interactions
+        id: ui
+        if: steps.browser.outcome == 'success'
+        continue-on-error: true
+        run: |
+          cat > optimized-ui.mjs <<'JS'
+          import { chromium } from '@playwright/test';
+          import { writeFile } from 'node:fs/promises';
+          const results=[];
+          const browser=await chromium.launch({headless:true});
+          for(const device of [{name:'mobile',width:390,height:844},{name:'tablet',width:768,height:1024},{name:'desktop',width:1440,height:900}]){
+            const errors=[];
+            const page=await browser.newPage({viewport:{width:device.width,height:device.height}});
+            page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));
+            try{
+              await page.goto('http://127.0.0.1:3000/jamal-portfolio/',{waitUntil:'networkidle',timeout:30000});
+              if(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)>2)errors.push('horizontal overflow');
+              if(await page.locator('h1').count()!==1)errors.push('invalid h1 count');
+              if(device.width<=1050){
+                await page.locator('[data-menu-open]').click();
+                await page.locator('[data-mobile-menu]').waitFor({state:'visible'});
+                if(await page.locator('[data-menu-link]').count()!==6)errors.push('menu link count');
+                if(!(await page.locator('.menu-portrait').isVisible()))errors.push('menu portrait hidden');
+                await page.locator('[data-menu-close]').click();
+              }
+              await page.locator('[data-theme-button]').click();
+              await page.locator('button[data-theme="cobalt"]').click();
+              if(await page.locator('html').getAttribute('data-theme')!=='cobalt')errors.push('theme switch');
+              await page.locator('[data-contact-open]:visible').first().click();
+              await page.locator('[data-contact-modal]').waitFor({state:'visible'});
+              if(!(await page.locator('[data-contact-modal] a',{hasText:'Open LinkedIn'}).isVisible()))errors.push('LinkedIn action');
+              await page.locator('.modal-head [data-contact-close]').click();
+            }catch(error){errors.push(error.stack||error.message)}
+            results.push({device:device.name,errors});
+            await page.close();
+          }
+          await browser.close();
+          await writeFile('/tmp/ui-perfect.json',JSON.stringify(results,null,2));
+          if(results.some(result=>result.errors.length))process.exit(1);
+          JS
+          node optimized-ui.mjs
+
+      - name: Commit optimized preview and report
+        if: always()
+        run: |
+          node <<'NODE'
+          const fs=require('node:fs');
+          const result=fs.existsSync('/tmp/perfect-result.json')?JSON.parse(fs.readFileSync('/tmp/perfect-result.json','utf8')):null;
+          const ui=fs.existsSync('/tmp/ui-perfect.json')?JSON.parse(fs.readFileSync('/tmp/ui-perfect.json','utf8')):null;
+          const outcomes={build:'${{ steps.build.outcome }}',server:'${{ steps.server.outcome }}',browser:'${{ steps.browser.outcome }}',lighthouse:'${{ steps.lighthouse.outcome }}',ui:'${{ steps.ui.outcome }}'};
+          fs.writeFileSync('MOBILE_PERFECT_AUDIT.md',`# Optimized mobile release audit\n\n## Outcomes\n\n\`\`\`json\n${JSON.stringify(outcomes,null,2)}\n\`\`\`\n\n## Lighthouse\n\n\`\`\`json\n${JSON.stringify(result,null,2)}\n\`\`\`\n\n## UI\n\n\`\`\`json\n${JSON.stringify(ui,null,2)}\n\`\`\`\n`);
+          NODE
+          rm -f optimized-ui.mjs .github/workflows/mobile-perfect-audit.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "perf: finalize mobile accessibility and render budget" || true
+          git pull --rebase origin preview
+          git push origin HEAD:preview
