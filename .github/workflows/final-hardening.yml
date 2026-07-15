@@ -23,6 +23,8 @@ jobs:
           cache: npm
 
       - name: Apply verified interaction patches
+        id: patch
+        continue-on-error: true
         shell: python
         run: |
           from pathlib import Path
@@ -31,18 +33,13 @@ jobs:
               file = Path(path)
               text = file.read_text()
               if old not in text:
-                  raise SystemExit(f"Expected pattern missing in {path}: {old[:90]!r}")
+                  raise SystemExit(f"Expected pattern missing in {path}: {old[:110]!r}")
               file.write_text(text.replace(old, new, 1))
 
           replace(
               "src/components/portfolio-page.tsx",
-              "  const closeRef = useRef<HTMLButtonElement>(null);\n  const panelId = useId();",
-              "  const closeRef = useRef<HTMLButtonElement>(null);\n  const panelId = useId();\n  const previousFocusRef = useRef<HTMLElement | null>(null);",
-          )
-          replace(
-              "src/components/portfolio-page.tsx",
-              "    const previousOverflow = document.body.style.overflow;\n    document.body.style.overflow = \"hidden\";\n    closeRef.current?.focus();",
-              "    const previousOverflow = document.body.style.overflow;\n    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;\n    document.body.style.overflow = \"hidden\";\n    closeRef.current?.focus();",
+              "  const closeRef = useRef<HTMLButtonElement>(null);\n  const panelId = useId();\n\n  useEffect(() => {\n    if (!open) return;\n    const previousOverflow = document.body.style.overflow;\n    document.body.style.overflow = \"hidden\";\n    closeRef.current?.focus();",
+              "  const closeRef = useRef<HTMLButtonElement>(null);\n  const panelId = useId();\n  const previousFocusRef = useRef<HTMLElement | null>(null);\n\n  useEffect(() => {\n    if (!open) return;\n    const previousOverflow = document.body.style.overflow;\n    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;\n    document.body.style.overflow = \"hidden\";\n    closeRef.current?.focus();",
           )
           replace(
               "src/components/portfolio-page.tsx",
@@ -82,18 +79,45 @@ jobs:
           )
 
       - name: Install dependencies
+        id: install
+        if: steps.patch.outcome == 'success'
+        continue-on-error: true
         run: npm ci
 
       - name: Verify final production release
+        id: verify
+        if: steps.install.outcome == 'success'
+        continue-on-error: true
         run: npm run check
 
-      - name: Commit verified hardening
+      - name: Publish hardening result
+        if: always()
         shell: bash
         run: |
           set -euo pipefail
-          rm -f .github/FINAL_HARDENING .github/workflows/final-hardening.yml
+          patch="${{ steps.patch.outcome }}"
+          install="${{ steps.install.outcome }}"
+          verify="${{ steps.verify.outcome }}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "fix: complete final accessibility and reliability hardening"
-          git push
+
+          if [[ "$patch" == "success" && "$install" == "success" && "$verify" == "success" ]]; then
+            rm -f .github/FINAL_HARDENING .github/HARDENING_RESULT.md .github/workflows/final-hardening.yml
+            git add -A
+            git commit -m "fix: complete final accessibility and reliability hardening"
+            git push
+          else
+            git reset --hard HEAD
+            cat > .github/HARDENING_RESULT.md <<EOF
+          # Final hardening result
+
+          - Patch: $patch
+          - Install: $install
+          - Verification: $verify
+          - Source commit: $GITHUB_SHA
+          EOF
+            git add .github/HARDENING_RESULT.md
+            git commit -m "ci: record final hardening failure"
+            git push
+            exit 1
+          fi
