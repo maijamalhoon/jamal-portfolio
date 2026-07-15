@@ -1,0 +1,343 @@
+/* Professional presence and recruiter-focused interaction layer. */
+
+.professional-profile-rail {
+  position: sticky;
+  top: 110px;
+  display: grid;
+  gap: 18px;
+}
+
+.github-profile-card {
+  position: relative;
+  top: auto;
+}
+
+.github-work-column {
+  min-width: 0;
+}
+
+.github-work-summary {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(128px, 0.35fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 22px;
+  margin-bottom: 18px;
+  padding: 20px 22px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--surface-solid) 92%, transparent), color-mix(in srgb, var(--surface) 78%, transparent));
+  box-shadow: 0 20px 55px rgba(0, 0, 0, 0.17);
+}
+
+.github-work-summary::before {
+  content: "";
+  position: absolute;
+  inset: -90% auto -90% -38%;
+  width: 34%;
+  transform: skewX(-18deg);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 18%, transparent), transparent);
+  animation: professional-summary-scan 7s var(--ease-premium) infinite;
+}
+
+.github-work-summary > div {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.github-work-summary span {
+  color: var(--muted-strong);
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.github-work-summary strong {
+  color: var(--accent);
+  font: 680 clamp(2.4rem, 5vw, 4.2rem)/0.9 "Space Grotesk Variable", sans-serif;
+  letter-spacing: -0.07em;
+  text-shadow: 0 10px 32px var(--glow);
+}
+
+.github-work-summary p {
+  position: relative;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.65;
+}
+
+.linkedin-profile-card {
+  position: relative;
+  padding: 24px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 100% 0%, var(--glow), transparent 15rem),
+    linear-gradient(145deg, color-mix(in srgb, var(--surface-solid) 94%, transparent), color-mix(in srgb, var(--surface) 80%, transparent));
+  box-shadow: var(--shadow);
+  isolation: isolate;
+}
+
+.linkedin-profile-card::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 170px;
+  aspect-ratio: 1;
+  right: -56px;
+  bottom: -68px;
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 24px color-mix(in srgb, var(--accent) 3%, transparent),
+    0 0 0 54px color-mix(in srgb, var(--accent) 2%, transparent);
+  animation: professional-profile-orbit 8s ease-in-out infinite;
+}
+
+.linkedin-profile-topline,
+.linkedin-profile-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.linkedin-profile-topline {
+  justify-content: space-between;
+}
+
+.linkedin-profile-topline > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted-strong);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.linkedin-profile-topline > span:first-child svg {
+  color: var(--accent);
+  filter: drop-shadow(0 0 12px var(--glow));
+}
+
+.linkedin-verified {
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.linkedin-profile-copy {
+  margin-top: 28px;
+}
+
+.linkedin-profile-copy > span {
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.linkedin-profile-copy h3 {
+  margin: 7px 0 8px;
+  font: 680 clamp(1.6rem, 3vw, 2.25rem)/0.96 "Space Grotesk Variable", sans-serif;
+  letter-spacing: -0.045em;
+}
+
+.linkedin-profile-copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.6;
+}
+
+.linkedin-signal-list {
+  display: grid;
+  gap: 9px;
+  margin-top: 24px;
+}
+
+.linkedin-signal-list span {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--muted-strong);
+  font-size: 0.78rem;
+}
+
+.linkedin-signal-list svg {
+  color: var(--accent);
+}
+
+.linkedin-profile-actions {
+  position: relative;
+  z-index: 1;
+  flex-wrap: wrap;
+  margin-top: 24px;
+}
+
+.linkedin-profile-actions a,
+.linkedin-profile-actions button {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--muted-strong);
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 800;
+  transition:
+    transform 0.24s var(--ease-premium),
+    border-color 0.24s ease,
+    background 0.24s ease,
+    color 0.24s ease,
+    box-shadow 0.24s ease;
+}
+
+.linkedin-profile-actions a:first-child {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: transparent;
+}
+
+.linkedin-profile-actions a:hover,
+.linkedin-profile-actions button:hover {
+  transform: translateY(-2px);
+  border-color: var(--line-strong);
+  background: var(--surface-strong);
+  color: var(--text);
+  box-shadow: 0 12px 28px var(--glow);
+}
+
+.linkedin-profile-actions a:first-child:hover {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.github-repo-card:only-child {
+  grid-column: 1 / -1;
+  min-height: 360px;
+}
+
+.github-repo-card:only-child h3 {
+  font-size: clamp(1.8rem, 4vw, 3rem);
+}
+
+.github-repo-card:only-child > p {
+  max-width: 70ch;
+  min-height: auto;
+  font-size: 0.96rem;
+}
+
+:where(.linkedin-profile-card, .github-work-summary, .github-repo-card, .project-card, .skill-card, .stat-card) {
+  position: relative;
+}
+
+:where(.linkedin-profile-card, .github-repo-card, .project-card, .skill-card, .stat-card)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(115deg, transparent 24%, color-mix(in srgb, var(--text) 6%, transparent) 48%, transparent 72%);
+  opacity: 0;
+  transform: translateX(-48%);
+  transition: opacity 0.3s ease, transform 0.8s var(--ease-premium);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :where(.linkedin-profile-card, .github-repo-card, .project-card, .skill-card, .stat-card):hover::after {
+    opacity: 1;
+    transform: translateX(48%);
+  }
+
+  .linkedin-profile-card:hover {
+    transform: translateY(-6px);
+    border-color: var(--line-strong);
+    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.28), 0 0 36px var(--glow);
+  }
+}
+
+.linkedin-profile-card {
+  transition:
+    transform 0.42s var(--ease-premium),
+    border-color 0.32s ease,
+    box-shadow 0.42s var(--ease-premium);
+}
+
+@keyframes professional-summary-scan {
+  0%, 64% { left: -38%; opacity: 0; }
+  72% { opacity: 1; }
+  92%, 100% { left: 125%; opacity: 0; }
+}
+
+@keyframes professional-profile-orbit {
+  0%, 100% { transform: scale(0.94) rotate(0deg); opacity: 0.42; }
+  50% { transform: scale(1.05) rotate(8deg); opacity: 0.82; }
+}
+
+@media (max-width: 980px) {
+  .professional-profile-rail {
+    position: relative;
+    top: auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .professional-profile-rail {
+    grid-template-columns: 1fr;
+  }
+
+  .linkedin-profile-card,
+  .github-work-summary {
+    border-radius: 22px;
+  }
+
+  .github-work-summary {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .github-work-summary > div {
+    justify-content: space-between;
+  }
+
+  .linkedin-profile-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .linkedin-profile-actions a:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .linkedin-profile-actions a,
+  .linkedin-profile-actions button {
+    width: 100%;
+  }
+
+  .github-repo-card:only-child {
+    min-height: 320px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .github-work-summary::before,
+  .linkedin-profile-card::before {
+    animation: none !important;
+  }
+}
