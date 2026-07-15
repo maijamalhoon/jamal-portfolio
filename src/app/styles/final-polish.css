@@ -1,0 +1,123 @@
+/* Final global-quality hardening: performance, touch UX, anchors and graceful fallbacks. */
+
+html {
+  scroll-padding-top: 112px;
+}
+
+body {
+  overflow-x: clip;
+}
+
+:where(a, button) {
+  touch-action: manipulation;
+}
+
+:where(.section, .work-section, .contact-section, .footer) {
+  scroll-margin-top: 112px;
+}
+
+/* Avoid rendering complex below-the-fold sections until they approach the viewport. */
+:where(.about-section, .experience-section, .skills-section, .work-section, .github-live-section, .education-section) {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 860px;
+}
+
+/* Keep transient confirmation messages clear of the persistent back-to-top control. */
+.toast-region {
+  bottom: 78px;
+}
+
+/* Reliable empty state if every public repository is removed or made private. */
+.github-empty-state {
+  grid-column: 1 / -1;
+  min-height: 270px;
+  display: grid;
+  place-items: center;
+  padding: clamp(28px, 6vw, 62px);
+  border: 1px dashed var(--line-strong);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 50% 15%, var(--glow), transparent 16rem),
+    color-mix(in srgb, var(--surface) 78%, transparent);
+  text-align: center;
+}
+
+.github-empty-state > div {
+  max-width: 48ch;
+}
+
+.github-empty-state strong {
+  display: block;
+  font: 680 clamp(1.6rem, 4vw, 2.8rem)/1 "Space Grotesk Variable", sans-serif;
+  letter-spacing: -0.05em;
+}
+
+.github-empty-state p {
+  margin: 14px 0 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.github-empty-state a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 20px;
+  padding: 0 16px;
+  border-radius: 13px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+/* Browser fallback without exposing unstyled native-looking surfaces. */
+@supports not ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {
+  .site-header,
+  .mobile-menu,
+  .floating-chip,
+  .portrait-glass,
+  .contact-panel-backdrop,
+  .mobile-menu-close {
+    background: var(--surface-solid);
+  }
+}
+
+@media (max-width: 700px) {
+  html {
+    scroll-padding-top: 88px;
+  }
+
+  :where(.section, .work-section, .contact-section, .footer) {
+    scroll-margin-top: 88px;
+  }
+
+  .toast-region {
+    bottom: 74px;
+  }
+
+  /* Retain the visual identity while reducing costly mobile compositing. */
+  .mobile-menu {
+    backdrop-filter: blur(18px) saturate(122%);
+  }
+
+  .floating-chip,
+  .portrait-glass {
+    backdrop-filter: blur(12px) saturate(125%);
+  }
+}
+
+@media (prefers-reduced-data: reduce) {
+  body::before,
+  .cursor-aura,
+  .hero::after,
+  .project-visual::after,
+  .mobile-menu::after {
+    display: none !important;
+  }
+
+  :where(.floating-chip, .portrait-glass, .site-header, .mobile-menu, .contact-panel-backdrop) {
+    backdrop-filter: none !important;
+  }
+}
