@@ -1,0 +1,133 @@
+name: Final smooth motion performance audit
+
+on:
+  push:
+    paths:
+      - .github/FINAL_MOTION_AUDIT
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Verify source and production export
+        env:
+          GITHUB_ACTIONS: "true"
+          NEXT_PUBLIC_SITE_URL: https://maijamalhoon.github.io/jamal-portfolio
+        run: npm run check
+
+      - name: Start production preview
+        run: |
+          npm start >/tmp/portfolio-server.log 2>&1 &
+          for attempt in {1..40}; do
+            curl --fail --silent http://127.0.0.1:3000/jamal-portfolio/ >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/portfolio-server.log
+          exit 1
+
+      - name: Install browser audit tools
+        run: |
+          npm install --no-save --package-lock=false playwright@1.55.0 lighthouse@12.8.2
+          npx playwright install --with-deps chromium
+
+      - name: Verify responsive interactions
+        run: |
+          cat > ui-audit.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const browser = await chromium.launch({ headless: true });
+          const errors = [];
+          for (const viewport of [
+            { name: 'mobile', width: 390, height: 844 },
+            { name: 'tablet', width: 768, height: 1024 },
+            { name: 'desktop', width: 1440, height: 900 },
+          ]) {
+            const page = await browser.newPage({ viewport });
+            page.on('pageerror', error => errors.push(`${viewport.name}: ${error.message}`));
+            await page.goto('http://127.0.0.1:3000/jamal-portfolio/', { waitUntil: 'networkidle' });
+            const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+            if (overflow > 2) errors.push(`${viewport.name}: horizontal overflow ${overflow}px`);
+            if (await page.locator('h1').count() !== 1) errors.push(`${viewport.name}: expected one h1`);
+            if (viewport.width <= 1050) {
+              await page.locator('[data-menu-open]').click();
+              await page.locator('[data-mobile-menu]').waitFor({ state: 'visible' });
+              if (await page.locator('[data-menu-link]').count() !== 6) errors.push(`${viewport.name}: menu item count`);
+              await page.locator('[data-menu-close]').click();
+              await page.locator('[data-mobile-menu]').waitFor({ state: 'hidden' });
+            }
+            await page.locator('[data-theme-button]').click();
+            await page.locator('button[data-theme="cobalt"]').click();
+            if (await page.locator('html').getAttribute('data-theme') !== 'cobalt') errors.push(`${viewport.name}: theme switch failed`);
+            await page.locator('[data-contact-open]').first().click();
+            await page.locator('[data-contact-modal]').waitFor({ state: 'visible' });
+            await page.locator('.modal-head [data-contact-close]').click();
+            await page.locator('[data-contact-modal]').waitFor({ state: 'hidden' });
+            await page.close();
+          }
+          await browser.close();
+          if (errors.length) {
+            console.error(errors.join('\n'));
+            process.exit(1);
+          }
+          console.log('Responsive interactions passed');
+          JS
+          node ui-audit.mjs
+
+      - name: Run Lighthouse mobile and desktop
+        run: |
+          CHROME_PATH="$(node -e "const { chromium }=require('playwright'); process.stdout.write(chromium.executablePath())")"
+          npx lighthouse http://127.0.0.1:3000/jamal-portfolio/ --quiet \
+            --chrome-path="$CHROME_PATH" --chrome-flags="--headless --no-sandbox" \
+            --only-categories=performance,accessibility,best-practices,seo \
+            --output=json --output-path=/tmp/mobile.json
+          npx lighthouse http://127.0.0.1:3000/jamal-portfolio/ --quiet \
+            --chrome-path="$CHROME_PATH" --chrome-flags="--headless --no-sandbox" --preset=desktop \
+            --only-categories=performance,accessibility,best-practices,seo \
+            --output=json --output-path=/tmp/desktop.json
+          node <<'NODE'
+          const fs = require('node:fs');
+          const read = path => {
+            const report = JSON.parse(fs.readFileSync(path, 'utf8'));
+            const c = report.categories;
+            const a = report.audits;
+            return {
+              performance: Math.round(c.performance.score * 100),
+              accessibility: Math.round(c.accessibility.score * 100),
+              bestPractices: Math.round(c['best-practices'].score * 100),
+              seo: Math.round(c.seo.score * 100),
+              fcp: a['first-contentful-paint'].displayValue,
+              lcp: a['largest-contentful-paint'].displayValue,
+              tbt: a['total-blocking-time'].displayValue,
+              cls: a['cumulative-layout-shift'].displayValue,
+              speedIndex: a['speed-index'].displayValue,
+            };
+          };
+          const mobile = read('/tmp/mobile.json');
+          const desktop = read('/tmp/desktop.json');
+          fs.writeFileSync('FINAL_MOTION_AUDIT.md', `# Final smooth-motion performance audit\n\n- Responsive interactions: passed\n\n\`\`\`json\n${JSON.stringify({ mobile, desktop }, null, 2)}\n\`\`\`\n`);
+          console.log({ mobile, desktop });
+          if (mobile.performance < 95 || mobile.accessibility < 95 || mobile.bestPractices < 95 || mobile.seo < 95 || desktop.performance < 95) process.exit(1);
+          NODE
+
+      - name: Publish verified result
+        if: always()
+        run: |
+          rm -f ui-audit.mjs .github/FINAL_MOTION_AUDIT .github/workflows/final-motion-performance-audit.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "audit: publish final smooth-motion performance result" || exit 0
+          git pull --rebase origin main
+          git push
