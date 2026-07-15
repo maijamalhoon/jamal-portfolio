@@ -1,0 +1,110 @@
+name: UI diagnostic v10
+
+on:
+  push:
+    paths:
+      - .github/UI_DIAGNOSTIC_V10
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        id: install
+        continue-on-error: true
+        run: npm ci >/tmp/install.log 2>&1
+      - name: Build
+        id: build
+        if: steps.install.outcome == 'success'
+        continue-on-error: true
+        env:
+          GITHUB_ACTIONS: "true"
+          NEXT_PUBLIC_SITE_URL: https://maijamalhoon.github.io/jamal-portfolio
+        run: npm run check >/tmp/build.log 2>&1
+      - name: Start
+        id: server
+        if: steps.build.outcome == 'success'
+        continue-on-error: true
+        run: |
+          npm start >/tmp/server.log 2>&1 &
+          for i in {1..40}; do curl -fsS --compressed http://127.0.0.1:3000/jamal-portfolio/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Browser
+        id: browser
+        if: steps.server.outcome == 'success'
+        continue-on-error: true
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.55.0 >/tmp/browser.log 2>&1
+          npx playwright install --with-deps chromium >>/tmp/browser.log 2>&1
+      - name: Test UI
+        id: ui
+        if: steps.browser.outcome == 'success'
+        continue-on-error: true
+        run: |
+          cat > ui-diagnostic.mjs <<'JS'
+          import { chromium } from '@playwright/test';
+          import { writeFile } from 'node:fs/promises';
+          const results=[];
+          let browser;
+          try {
+            browser=await chromium.launch({headless:true});
+            for(const device of [{name:'mobile',width:390,height:844},{name:'tablet',width:768,height:1024},{name:'desktop',width:1440,height:900}]){
+              const notes=[];
+              const context=await browser.newContext({viewport:{width:device.width,height:device.height}});
+              const page=await context.newPage();
+              page.on('pageerror',e=>notes.push(`pageerror: ${e.message}`));
+              try{
+                await page.goto('http://127.0.0.1:3000/jamal-portfolio/',{waitUntil:'networkidle',timeout:30000});
+                notes.push(`url=${page.url()}`);
+                notes.push(`scripts=${await page.locator('script').count()}`);
+                notes.push(`overflow=${await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)}`);
+                notes.push(`h1=${await page.locator('h1').count()}`);
+                notes.push(`portrait=${await page.locator('.portrait-frame img').isVisible()}`);
+                if(device.width<=1050){
+                  notes.push(`menuButton=${await page.locator('[data-menu-open]').count()}`);
+                  await page.locator('[data-menu-open]').click({timeout:10000});
+                  await page.locator('[data-mobile-menu]').waitFor({state:'visible',timeout:10000});
+                  notes.push(`menuLinks=${await page.locator('[data-menu-link]').count()}`);
+                  notes.push(`menuPortrait=${await page.locator('.menu-portrait').isVisible()}`);
+                  await page.locator('[data-menu-close]').click();
+                }
+                await page.locator('[data-theme-button]').click({timeout:10000});
+                await page.locator('[data-theme="cobalt"]').click({timeout:10000});
+                notes.push(`theme=${await page.locator('html').getAttribute('data-theme')}`);
+                await page.locator('[data-contact-open]').first().click({timeout:10000});
+                await page.locator('[data-contact-modal]').waitFor({state:'visible',timeout:10000});
+                notes.push(`linkedIn=${await page.locator('[data-contact-modal] a',{hasText:'Open LinkedIn'}).isVisible()}`);
+                await page.locator('.modal-head [data-contact-close]').click();
+                notes.push('completed=true');
+              }catch(error){notes.push(`EXCEPTION: ${error.stack||error.message}`)}
+              results.push({device,notes});
+              await context.close();
+            }
+          }catch(error){results.push({fatal:error.stack||error.message})}
+          if(browser)await browser.close();
+          await writeFile('UI_DIAGNOSTIC_V10.json',JSON.stringify(results,null,2));
+          console.log(results);
+          JS
+          node ui-diagnostic.mjs >/tmp/ui.log 2>&1
+      - name: Publish
+        if: always()
+        run: |
+          node <<'NODE'
+          const fs=require('node:fs');const read=p=>fs.existsSync(p)?fs.readFileSync(p,'utf8').slice(-12000):'not available';const data={outcomes:{install:'${{ steps.install.outcome }}',build:'${{ steps.build.outcome }}',server:'${{ steps.server.outcome }}',browser:'${{ steps.browser.outcome }}',ui:'${{ steps.ui.outcome }}'},results:fs.existsSync('UI_DIAGNOSTIC_V10.json')?JSON.parse(fs.readFileSync('UI_DIAGNOSTIC_V10.json')):null};fs.writeFileSync('UI_DIAGNOSTIC_V10.md',`# UI diagnostic v10\n\n\`\`\`json\n${JSON.stringify(data,null,2)}\n\`\`\`\n\n## UI log\n\n\`\`\`text\n${read('/tmp/ui.log')}\n\`\`\`\n\n## Browser log\n\n\`\`\`text\n${read('/tmp/browser.log')}\n\`\`\`\n`);
+          NODE
+          rm -f ui-diagnostic.mjs UI_DIAGNOSTIC_V10.json .github/UI_DIAGNOSTIC_V10 .github/workflows/ui-diagnostic-v10.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "audit: publish UI diagnostic v10"
+          git pull --rebase origin main
+          git push
