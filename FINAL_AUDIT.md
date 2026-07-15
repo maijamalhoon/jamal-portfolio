@@ -1,6 +1,6 @@
 # Final Global Portfolio Audit
 
-Audited against commit: `d14555922b52e22113541237b7d4ab6009ee4064`
+Audited against commit: `d18a1926107de04d2a804816c465cf70bd0e96ef`
 
 ## Automated verification
 
@@ -12,16 +12,16 @@ Audited against commit: `d14555922b52e22113541237b7d4ab6009ee4064`
 | Generated static release and semantic checks | success |
 | Production preview server | success |
 | Public routes, downloads and custom 404 | success |
-| Responsive browser interaction tests | failure |
-| Lighthouse mobile and desktop | skipped |
-| Enforced global quality thresholds | skipped |
+| Responsive browser interaction tests | success |
+| Lighthouse mobile and desktop | success |
+| Enforced global quality thresholds | failure |
 
 ## Lighthouse scores
 
 | Mode | Performance | Accessibility | Best Practices | SEO |
 |---|---:|---:|---:|---:|
-| Mobile | n/a | n/a | n/a | n/a |
-| Desktop | n/a | n/a | n/a | n/a |
+| Mobile | 42 | 100 | 100 | 100 |
+| Desktop | 98 | 100 | 100 | 100 |
 
 ## Security
 
