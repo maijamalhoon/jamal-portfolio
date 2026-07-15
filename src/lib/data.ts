@@ -13,7 +13,7 @@ export const experience = [
     role: "Assistant Accountant",
     period: "Jun 2025 — Present",
     summary:
-      "Owns day-to-day accounting operations, payroll, commissions, bank reconciliation, journals, reporting and finance documentation across dealership workflows.",
+      "Manages day-to-day accounting operations, payroll, commissions, bank reconciliation, journals, reporting and finance documentation across dealership workflows.",
     highlights: [
       "Salary and management payment preparation",
       "Sales, recovery, CR and MRS commission handling",
@@ -28,7 +28,7 @@ export const experience = [
     summary:
       "Managed high-volume cash, card, corporate and warranty billing while keeping settlements, invoicing and customer interactions accurate under pressure.",
     highlights: [
-      "Creative DMS invoicing and receipt processing",
+      "CREATIVE DMS invoicing and receipt processing",
       "Daily settlement, cash closing and reporting",
       "POS accuracy across multiple payment methods",
       "Customer-facing counter management",
@@ -39,7 +39,7 @@ export const experience = [
     role: "Cashier",
     period: "Apr 2024 — Nov 2024",
     summary:
-      "Handled dealership billing, reconciliation and end-of-day reporting with a strong focus on clean records and fast customer service.",
+      "Handled dealership billing, reconciliation and end-of-day reporting with a strong focus on clean records and responsive customer service.",
     highlights: [
       "Cash, credit/debit, corporate and warranty billing",
       "End-of-day reconciliation and reporting",
@@ -78,9 +78,9 @@ export const skillGroups = [
     title: "Working style",
     skills: [
       "Problem Solving",
-      "Customer Dealing",
-      "Team Work",
-      "Quick Learning",
+      "Customer Service",
+      "Teamwork",
+      "Adaptability",
       "Process Accuracy",
       "Documentation",
     ],
@@ -92,7 +92,7 @@ export const projects = [
     eyebrow: "Flagship product",
     title: "Jamal’s Finance",
     description:
-      "A privacy-minded personal finance workspace for accounts, income, expenses, goals, investments, payables and financial trends — designed around truthful data, ownership and calm power.",
+      "A privacy-minded personal finance workspace for accounts, income, expenses, goals, investments, payables and financial trends — designed around truthful data, ownership and calm control.",
     stack: ["Next.js 16", "React 19", "TypeScript", "Tailwind 4", "Supabase"],
     href: "https://jamals-finance-sable.vercel.app",
     repo: "https://github.com/maijamalhoon/Jamals-finance",
