@@ -65,3 +65,43 @@ footer {
     contain-intrinsic-size: auto 620px;
   }
 }
+
+
+/* Final mobile render budget */
+.capability-strip {
+  content-visibility: auto;
+  contain-intrinsic-size: 58px;
+}
+
+@media (max-width: 760px) {
+  body {
+    background: var(--bg);
+    text-rendering: auto;
+  }
+
+  .availability,
+  .hero h1,
+  .hero-copy > p,
+  .hero-actions,
+  .hero-meta,
+  .portrait-stage,
+  .float-chip,
+  .capability-strip > div,
+  .scroll-cue .icon,
+  .profile-skeleton i,
+  .repo-placeholder i {
+    animation: none !important;
+  }
+
+  .hero-grid-bg { opacity: .22; }
+  .portrait-orbit { display: none; }
+  .portrait-frame,
+  .float-chip { box-shadow: none; }
+
+  .section,
+  .education-section,
+  .contact,
+  footer {
+    contain: layout paint style;
+  }
+}

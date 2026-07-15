@@ -56,7 +56,7 @@ export default function Home() {
     <a className="skip-link" href="#main">Skip to content</a>
 
     <header className="site-header" data-header>
-      <a className="brand" href="#home" aria-label="Jamal Yaqoob home">
+      <a className="brand" href="#home">
         <span className="brand-mark">JY</span>
         <span className="brand-copy"><strong>Jamal Yaqoob</strong><small>Finance × Systems</small></span>
       </a>
@@ -64,16 +64,16 @@ export default function Home() {
         {nav.map(([, label, href]) => <a key={href} href={href}>{label}</a>)}
       </nav>
       <div className="header-actions">
-        <button className="theme-button" type="button" data-theme-button aria-haspopup="menu" aria-expanded="false"><Icon name="palette" size={17}/><span data-theme-label>Noir</span></button>
+        <button className="theme-button" type="button" data-theme-button aria-label="Choose color theme: Noir" aria-haspopup="menu" aria-expanded="false" aria-controls="theme-menu"><Icon name="palette" size={17}/><span data-theme-label>Noir</span></button>
         <button className="connect-button" type="button" data-contact-open>Let&apos;s connect <Icon name="arrow" size={17}/></button>
         <button className="menu-button" type="button" data-menu-open aria-label="Open navigation" aria-expanded="false" aria-controls="mobile-menu"><Icon name="menu" size={22}/></button>
       </div>
-      <div className="theme-popover" data-theme-menu role="menu" aria-label="Color themes" hidden>
+      <div className="theme-popover" id="theme-menu" data-theme-menu role="menu" aria-label="Color themes" hidden>
         {[['noir','Noir','#caff4a'],['cobalt','Cobalt','#47d7ff'],['ember','Ember','#ff7657'],['ivory','Ivory','#5b57ff']].map(([id,label,color]) => <button key={id} type="button" role="menuitemradio" aria-checked={id==='noir'} data-theme={id}><i style={{background: color}}/><span>{label}</span><b><Icon name="check" size={15}/></b></button>)}
       </div>
     </header>
 
-    <div className="mobile-menu" id="mobile-menu" data-mobile-menu hidden>
+    <div className="mobile-menu" id="mobile-menu" data-mobile-menu role="dialog" aria-modal="true" aria-label="Navigation menu" hidden>
       <div className="menu-grid" aria-hidden="true"/>
       <div className="menu-portrait" style={{ backgroundImage: `url(${basePath}/jamal-yaqoob.webp)` }} aria-hidden="true"/>
       <button className="menu-close" type="button" data-menu-close aria-label="Close navigation"><Icon name="close" size={25}/></button>

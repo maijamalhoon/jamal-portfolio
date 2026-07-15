@@ -64,11 +64,15 @@
     html.dataset.theme = selected;
     try { localStorage.setItem('jamal-theme', selected); } catch {}
     const label = one('[data-theme-label]');
+    const trigger = one('[data-theme-button]');
     if (label) label.textContent = themeNames[selected];
+    trigger?.setAttribute('aria-label', `Choose color theme: ${themeNames[selected]}`);
     document.querySelectorAll('button[data-theme]').forEach((button) => {
       button.setAttribute('aria-checked', String(button.dataset.theme === selected));
     });
   };
+
+  setTheme(html.dataset.theme || 'noir');
 
   const closeThemeMenu = () => {
     const menu = one('[data-theme-menu]');
