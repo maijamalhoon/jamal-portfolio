@@ -6,6 +6,8 @@ TITLE:Assistant Accountant
 EMAIL;TYPE=INTERNET:jamalarain186@gmail.com
 TEL;TYPE=CELL:+923282685435
 ADR;TYPE=WORK:;;DHA Phase I;Karachi;;;Pakistan
-URL:https://github.com/maijamalhoon
+URL;TYPE=WORK:https://maijamalhoon.github.io/jamal-portfolio/
+URL;TYPE=GitHub:https://github.com/maijamalhoon
+X-SOCIALPROFILE;TYPE=linkedin:https://pk.linkedin.com/in/jamalarain-it
 NOTE:Accounting, finance operations, ERP/DMS systems and computer science.
 END:VCARD
