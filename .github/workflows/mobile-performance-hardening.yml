@@ -1,0 +1,587 @@
+name: Verified mobile performance hardening
+
+on:
+  push:
+    paths:
+      - .github/PERFORMANCE_HARDENING
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Apply performance architecture patches
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          path = Path("src/components/portfolio-page.tsx")
+          text = path.read_text()
+
+          text = text.replace(
+              'import Image from "next/image";',
+              'import dynamic from "next/dynamic";\nimport Image from "next/image";',
+              1,
+          )
+
+          old_motion_import = '''import {
+            AnimatePresence,
+            motion,
+            useMotionValue,
+            useReducedMotion,
+            useScroll,
+            useSpring,
+            useTransform,
+          } from "motion/react";
+          import Lenis from "lenis";'''
+          new_motion_import = '''import { AnimatePresence, LazyMotion, m, useReducedMotion } from "motion/react";'''
+          if old_motion_import not in text:
+              raise SystemExit("Motion import block not found")
+          text = text.replace(old_motion_import, new_motion_import, 1)
+          text = text.replace('import GitHubLive from "@/components/github-live";\n', '', 1)
+
+          insertion = '''
+          const loadMotionFeatures = () => import("@/lib/motion-features").then((module) => module.default);
+          const GitHubLive = dynamic(() => import("@/components/github-live"), {
+            ssr: false,
+            loading: () => null,
+          });
+
+          const iconMap = {'''
+          text = text.replace('\nconst iconMap = {', insertion, 1)
+          text = text.replace('motion.', 'm.')
+
+          smooth_scroll = '''function SmoothScroll() {
+            const reduceMotion = useReducedMotion();
+
+            useEffect(() => {
+              const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
+              const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
+              if (reduceMotion || coarsePointer || saveData) return;
+
+              let cancelled = false;
+              let frame = 0;
+              let lenis: { raf: (time: number) => void; destroy: () => void } | null = null;
+              const timer = window.setTimeout(() => {
+                void import("lenis").then(({ default: Lenis }) => {
+                  if (cancelled) return;
+                  lenis = new Lenis({
+                    duration: 1.05,
+                    smoothWheel: true,
+                    wheelMultiplier: 0.9,
+                    touchMultiplier: 1.2,
+                  });
+                  const raf = (time: number) => {
+                    lenis?.raf(time);
+                    frame = window.requestAnimationFrame(raf);
+                  };
+                  frame = window.requestAnimationFrame(raf);
+                });
+              }, 900);
+
+              return () => {
+                cancelled = true;
+                window.clearTimeout(timer);
+                window.cancelAnimationFrame(frame);
+                lenis?.destroy();
+              };
+            }, [reduceMotion]);
+
+            return null;
+          }'''
+          text, count = re.subn(
+              r'function SmoothScroll\(\) \{.*?\n\}\n\nfunction CursorAura',
+              smooth_scroll + '\n\nfunction CursorAura',
+              text,
+              count=1,
+              flags=re.S,
+          )
+          if count != 1:
+              raise SystemExit("SmoothScroll replacement failed")
+
+          cursor_aura = '''function CursorAura() {
+            const reduceMotion = useReducedMotion();
+            const [enabled, setEnabled] = useState(false);
+            const auraRef = useRef<HTMLDivElement>(null);
+
+            useEffect(() => {
+              const pointerQuery = window.matchMedia("(pointer: fine) and (hover: hover)");
+              const sync = () => setEnabled(pointerQuery.matches && !reduceMotion);
+              sync();
+              pointerQuery.addEventListener("change", sync);
+              return () => pointerQuery.removeEventListener("change", sync);
+            }, [reduceMotion]);
+
+            useEffect(() => {
+              if (!enabled) return;
+              let frame = 0;
+              let nextX = -160;
+              let nextY = -160;
+              const paint = () => {
+                frame = 0;
+                if (auraRef.current) auraRef.current.style.transform = `translate3d(${nextX}px, ${nextY}px, 0)`;
+              };
+              const move = (event: PointerEvent) => {
+                nextX = event.clientX - 160;
+                nextY = event.clientY - 160;
+                if (!frame) frame = window.requestAnimationFrame(paint);
+              };
+              window.addEventListener("pointermove", move, { passive: true });
+              return () => {
+                window.removeEventListener("pointermove", move);
+                window.cancelAnimationFrame(frame);
+              };
+            }, [enabled]);
+
+            return enabled ? <div ref={auraRef} aria-hidden className="cursor-aura" /> : null;
+          }'''
+          text, count = re.subn(
+              r'function CursorAura\(\) \{.*?\n\}\n\nfunction MagneticLink',
+              cursor_aura + '\n\nfunction MagneticLink',
+              text,
+              count=1,
+              flags=re.S,
+          )
+          if count != 1:
+              raise SystemExit("CursorAura replacement failed")
+
+          magnetic_link = '''function MagneticLink({
+            href,
+            children,
+            className = "",
+            external = false,
+            download = false,
+          }: {
+            href: string;
+            children: React.ReactNode;
+            className?: string;
+            external?: boolean;
+            download?: boolean;
+          }) {
+            const onMove = (event: React.PointerEvent<HTMLAnchorElement>) => {
+              if (!window.matchMedia("(pointer: fine) and (hover: hover)").matches) return;
+              const rect = event.currentTarget.getBoundingClientRect();
+              const x = (event.clientX - rect.left - rect.width / 2) * 0.2;
+              const y = (event.clientY - rect.top - rect.height / 2) * 0.2;
+              event.currentTarget.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+            };
+            const reset = (event: React.PointerEvent<HTMLAnchorElement>) => {
+              event.currentTarget.style.transform = "";
+            };
+
+            return (
+              <a
+                href={href}
+                className={className}
+                onPointerMove={onMove}
+                onPointerLeave={reset}
+                target={external ? "_blank" : undefined}
+                rel={external ? "noreferrer" : undefined}
+                download={download || undefined}
+              >
+                {children}
+              </a>
+            );
+          }'''
+          text, count = re.subn(
+              r'function MagneticLink\(\{.*?\n\}\n\nfunction MagneticButton',
+              magnetic_link + '\n\nfunction MagneticButton',
+              text,
+              count=1,
+              flags=re.S,
+          )
+          if count != 1:
+              raise SystemExit("MagneticLink replacement failed")
+
+          magnetic_button = '''function MagneticButton({
+            children,
+            className = "",
+            onClick,
+            ariaLabel,
+          }: {
+            children: React.ReactNode;
+            className?: string;
+            onClick: () => void;
+            ariaLabel?: string;
+          }) {
+            const onMove = (event: React.PointerEvent<HTMLButtonElement>) => {
+              if (!window.matchMedia("(pointer: fine) and (hover: hover)").matches) return;
+              const rect = event.currentTarget.getBoundingClientRect();
+              const x = (event.clientX - rect.left - rect.width / 2) * 0.2;
+              const y = (event.clientY - rect.top - rect.height / 2) * 0.2;
+              event.currentTarget.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+            };
+            const reset = (event: React.PointerEvent<HTMLButtonElement>) => {
+              event.currentTarget.style.transform = "";
+            };
+
+            return (
+              <button
+                type="button"
+                className={className}
+                onPointerMove={onMove}
+                onPointerLeave={reset}
+                onClick={onClick}
+                aria-label={ariaLabel}
+              >
+                {children}
+              </button>
+            );
+          }'''
+          text, count = re.subn(
+              r'function MagneticButton\(\{.*?\n\}\n\nfunction SpotlightCard',
+              magnetic_button + '\n\nfunction SpotlightCard',
+              text,
+              count=1,
+              flags=re.S,
+          )
+          if count != 1:
+              raise SystemExit("MagneticButton replacement failed")
+
+          hero = '''function Hero({ onOpenContact }: { onOpenContact: () => void }) {
+            return (
+              <section className="hero" id="home">
+                <div className="hero-grid" aria-hidden />
+                <div className="hero-copy">
+                  <div className="availability-pill hero-enter hero-enter-one">
+                    <span className="availability-dot" />
+                    Karachi, Pakistan · Accounting & finance
+                  </div>
+
+                  <h1>
+                    <span className="hero-line hero-enter hero-enter-two">Numbers with</span>
+                    <span className="hero-line hero-line-accent hero-enter hero-enter-three">
+                      operational intelligence.
+                    </span>
+                  </h1>
+
+                  <p className="hero-intro hero-enter hero-enter-four">
+                    I’m Jamal Yaqoob — an accounts professional and computer science student building precise finance
+                    operations, reliable systems and thoughtful digital products.
+                  </p>
+
+                  <div className="hero-actions hero-enter hero-enter-five">
+                    <MagneticLink href="#work" className="button button-primary">
+                      Explore selected work <ArrowDownRight size={18} />
+                    </MagneticLink>
+                    <MagneticLink href={portfolioPaths.resumePdf} className="button button-secondary" download>
+                      Download résumé <Download size={17} />
+                    </MagneticLink>
+                    <button type="button" className="hero-contact-link" onClick={onOpenContact}>
+                      Contact options
+                    </button>
+                  </div>
+
+                  <div className="hero-meta">
+                    <div>
+                      <span>Current role</span>
+                      <strong>Assistant Accountant</strong>
+                    </div>
+                    <div>
+                      <span>Focus</span>
+                      <strong>Finance operations + systems</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="portrait-stage hero-enter hero-enter-portrait">
+                  <div className="portrait-orbit orbit-one" />
+                  <div className="portrait-orbit orbit-two" />
+                  <div className="portrait-frame">
+                    <Image
+                      src="https://avatars.githubusercontent.com/u/150429791?v=4"
+                      alt="Portrait of Jamal Yaqoob"
+                      fill
+                      priority
+                      fetchPriority="high"
+                      sizes="(max-width: 900px) 84vw, 38vw"
+                    />
+                    <div className="portrait-glass">
+                      <Sparkles size={18} />
+                      <span>Accuracy in every layer</span>
+                    </div>
+                  </div>
+                  <div className="floating-chip chip-one">
+                    <ReceiptText size={17} />
+                    Reconciliation
+                  </div>
+                  <div className="floating-chip chip-two">
+                    <Code2 size={17} />
+                    Systems thinking
+                  </div>
+                </div>
+
+                <a className="scroll-cue" href="#about" aria-label="Scroll to about section">
+                  <span>Scroll to discover</span>
+                  <ArrowDownRight size={18} />
+                </a>
+              </section>
+            );
+          }'''
+          text, count = re.subn(
+              r'function Hero\(\{ onOpenContact \}: \{ onOpenContact: \(\) => void \}\) \{.*?\n\}\n\nfunction SignalMarquee',
+              hero + '\n\nfunction SignalMarquee',
+              text,
+              count=1,
+              flags=re.S,
+          )
+          if count != 1:
+              raise SystemExit("Hero replacement failed")
+
+          deferred = '''function DeferredGitHubLive() {
+            const hostRef = useRef<HTMLDivElement>(null);
+            const [ready, setReady] = useState(false);
+
+            useEffect(() => {
+              const host = hostRef.current;
+              if (!host) return;
+              if (!("IntersectionObserver" in window)) {
+                setReady(true);
+                return;
+              }
+              const observer = new IntersectionObserver(
+                (entries) => {
+                  if (entries.some((entry) => entry.isIntersecting)) {
+                    setReady(true);
+                    observer.disconnect();
+                  }
+                },
+                { rootMargin: "900px 0px" },
+              );
+              observer.observe(host);
+              return () => observer.disconnect();
+            }, []);
+
+            return (
+              <div ref={hostRef} id="github" className="deferred-github-host">
+                {ready ? (
+                  <GitHubLive />
+                ) : (
+                  <section className="section github-live-section github-live-placeholder" aria-labelledby="github-placeholder-title">
+                    <div className="section-heading">
+                      <div className="section-kicker"><span>05</span><span>Professional presence</span></div>
+                      <h2 id="github-placeholder-title">Live proof of work, loaded only when you approach it.</h2>
+                    </div>
+                    <div className="github-placeholder-card" aria-hidden>
+                      <span />
+                      <span />
+                      <span />
+                    </div>
+                  </section>
+                )}
+              </div>
+            );
+          }
+
+          function ScrollProgress() {
+            const progressRef = useRef<HTMLDivElement>(null);
+
+            useEffect(() => {
+              let frame = 0;
+              const update = () => {
+                if (frame) return;
+                frame = window.requestAnimationFrame(() => {
+                  frame = 0;
+                  const maximum = document.documentElement.scrollHeight - window.innerHeight;
+                  const value = maximum > 0 ? Math.min(1, Math.max(0, window.scrollY / maximum)) : 0;
+                  if (progressRef.current) progressRef.current.style.transform = `scaleX(${value})`;
+                });
+              };
+              update();
+              window.addEventListener("scroll", update, { passive: true });
+              window.addEventListener("resize", update, { passive: true });
+              return () => {
+                window.removeEventListener("scroll", update);
+                window.removeEventListener("resize", update);
+                window.cancelAnimationFrame(frame);
+              };
+            }, []);
+
+            return <div ref={progressRef} className="scroll-progress" aria-hidden />;
+          }
+
+          function SignalMarquee'''
+          text = text.replace('function SignalMarquee', deferred, 1)
+          text = text.replace('<GitHubLive />', '<DeferredGitHubLive />', 1)
+          text = text.replace(
+              '  const { scrollYProgress } = useScroll();\n  const progress = useSpring(scrollYProgress, { stiffness: 140, damping: 30, restDelta: 0.001 });\n',
+              '',
+              1,
+          )
+          text = text.replace('<m.div className="scroll-progress" style={{ scaleX: progress }} aria-hidden />', '<ScrollProgress />', 1)
+          text = text.replace(
+              '  return (\n    <>\n      <a className="skip-link"',
+              '  return (\n    <LazyMotion features={loadMotionFeatures} strict>\n      <>\n      <a className="skip-link"',
+              1,
+          )
+          text = text.replace(
+              '      <BackToTop />\n    </>\n  );\n}',
+              '      <BackToTop />\n      </>\n    </LazyMotion>\n  );\n}',
+              1,
+          )
+
+          path.write_text(text)
+
+          github_path = Path("src/components/github-live.tsx")
+          github_text = github_path.read_text()
+          github_text = github_text.replace('import { motion } from "motion/react";', 'import { m } from "motion/react";', 1)
+          github_text = github_text.replace('motion.', 'm.')
+          github_text = github_text.replace('id="github"', 'id="github-content"', 1)
+          github_path.write_text(github_text)
+
+          Path("src/lib/motion-features.ts").write_text('import { domAnimation } from "motion/react";\n\nexport default domAnimation;\n')
+
+          css_path = Path("src/app/styles/performance.css")
+          css = css_path.read_text()
+          css += '''
+
+          /* Final mobile performance layer: visible-first hero motion and deferred proof-of-work hydration. */
+          .hero-enter {
+            will-change: transform;
+          }
+
+          .deferred-github-host {
+            min-height: 640px;
+            scroll-margin-top: 112px;
+          }
+
+          .github-live-placeholder {
+            min-height: 620px;
+          }
+
+          .github-placeholder-card {
+            min-height: 360px;
+            display: grid;
+            align-content: center;
+            gap: 18px;
+            padding: clamp(28px, 6vw, 64px);
+            border: 1px solid var(--line);
+            border-radius: 28px;
+            background: radial-gradient(circle at 25% 10%, var(--glow), transparent 18rem), var(--surface);
+            box-shadow: var(--shadow);
+          }
+
+          .github-placeholder-card span {
+            display: block;
+            height: 18px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, var(--surface-strong), color-mix(in srgb, var(--accent) 13%, var(--surface)), var(--surface-strong));
+            background-size: 220% 100%;
+            animation: placeholder-scan 1.8s ease-in-out infinite;
+          }
+
+          .github-placeholder-card span:nth-child(1) { width: 42%; }
+          .github-placeholder-card span:nth-child(2) { width: 82%; }
+          .github-placeholder-card span:nth-child(3) { width: 64%; }
+
+          @keyframes hero-visible-arrival {
+            from { transform: translate3d(0, 16px, 0) scale(0.992); }
+            to { transform: translate3d(0, 0, 0) scale(1); }
+          }
+
+          @keyframes hero-portrait-arrival {
+            from { transform: translate3d(0, 18px, 0) scale(0.975) rotate(0.6deg); }
+            to { transform: translate3d(0, 0, 0) scale(1) rotate(0); }
+          }
+
+          @keyframes placeholder-scan {
+            0%, 100% { background-position: 100% 0; }
+            50% { background-position: 0 0; }
+          }
+
+          @media (prefers-reduced-motion: no-preference) {
+            .hero-enter { animation: hero-visible-arrival 700ms var(--ease-premium) both; }
+            .hero-enter-two { animation-delay: 60ms; }
+            .hero-enter-three { animation-delay: 110ms; }
+            .hero-enter-four { animation-delay: 170ms; }
+            .hero-enter-five { animation-delay: 230ms; }
+            .hero-enter-portrait { animation-name: hero-portrait-arrival; animation-duration: 820ms; animation-delay: 120ms; }
+          }
+
+          @media (max-width: 700px) {
+            .deferred-github-host { min-height: 520px; scroll-margin-top: 88px; }
+            .github-live-placeholder { min-height: 500px; }
+            .github-placeholder-card { min-height: 280px; border-radius: 22px; }
+            .hero-enter { animation-duration: 520ms; }
+            .github-placeholder-card span { animation: none; }
+          }
+
+          @media (prefers-reduced-motion: reduce), (prefers-reduced-data: reduce) {
+            .hero-enter,
+            .github-placeholder-card span {
+              animation: none !important;
+              will-change: auto;
+            }
+          }
+          '''
+          css_path.write_text(css)
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Verify source and production build
+        env:
+          GITHUB_ACTIONS: "true"
+          NEXT_PUBLIC_SITE_URL: https://maijamalhoon.github.io/jamal-portfolio
+        run: npm run check
+
+      - name: Start production preview
+        run: |
+          npm start > /tmp/portfolio-server.log 2>&1 &
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:3000/jamal-portfolio/ > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/portfolio-server.log
+          exit 1
+
+      - name: Install Lighthouse browser
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.55.0 lighthouse@12.8.2
+          npx playwright install --with-deps chromium
+
+      - name: Verify mobile performance improvement
+        id: lighthouse
+        shell: bash
+        run: |
+          CHROME_PATH="$(node -e "const { chromium } = require('@playwright/test'); process.stdout.write(chromium.executablePath())")"
+          npx lighthouse http://127.0.0.1:3000/jamal-portfolio/ --quiet \
+            --chrome-path="$CHROME_PATH" --chrome-flags="--headless --no-sandbox" \
+            --only-categories=performance,accessibility,best-practices,seo \
+            --output=json --output-path=/tmp/lighthouse-mobile.json
+          node <<'NODE'
+          const fs = require('node:fs');
+          const report = JSON.parse(fs.readFileSync('/tmp/lighthouse-mobile.json', 'utf8'));
+          const values = Object.fromEntries(Object.entries(report.categories).map(([key, value]) => [key, Math.round(value.score * 100)]));
+          for (const [key, value] of Object.entries(values)) {
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `${key.replaceAll('-', '_')}=${value}\n`);
+          }
+          fs.writeFileSync('PERFORMANCE_RESULT.md', `# Mobile performance hardening\n\n- Performance: ${values.performance}\n- Accessibility: ${values.accessibility}\n- Best Practices: ${values['best-practices']}\n- SEO: ${values.seo}\n`);
+          if (values.performance < 60 || values.accessibility < 95 || values['best-practices'] < 90 || values.seo < 95) process.exit(1);
+          NODE
+
+      - name: Commit verified optimization
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/PERFORMANCE_HARDENING .github/workflows/mobile-performance-hardening.yml PERFORMANCE_DIAGNOSTIC.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "perf: harden mobile startup without changing visual identity"
+          git pull --rebase origin main
+          git push
