@@ -1,0 +1,97 @@
+name: Mobile stability audit
+
+on:
+  push:
+    paths:
+      - .github/workflows/mobile-stability-audit.yml
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: preview
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Build
+        env:
+          GITHUB_ACTIONS: "true"
+          NEXT_PUBLIC_SITE_URL: https://maijamalhoon.github.io/jamal-portfolio
+        run: |
+          npm ci
+          npm run check
+      - name: Start server
+        run: |
+          npm start >/tmp/server.log 2>&1 &
+          for i in {1..40}; do curl -fsS --compressed http://127.0.0.1:3000/jamal-portfolio/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Install Lighthouse browser
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.55.0 lighthouse@12.8.2
+          npx playwright install --with-deps chromium
+      - name: Run three independent mobile audits
+        run: |
+          CHROME_PATH="$(node -e "const { chromium } = require('@playwright/test'); process.stdout.write(chromium.executablePath())")"
+          for run in 1 2 3; do
+            npx lighthouse http://127.0.0.1:3000/jamal-portfolio/ --quiet \
+              --chrome-path="$CHROME_PATH" --chrome-flags="--headless --no-sandbox" \
+              --only-categories=performance,accessibility,best-practices,seo \
+              --output=json --output-path="/tmp/mobile-${run}.json"
+            sleep 2
+          done
+          node <<'NODE'
+          const fs=require('node:fs');
+          const runs=[1,2,3].map((index)=>{
+            const r=JSON.parse(fs.readFileSync(`/tmp/mobile-${index}.json`,'utf8'));
+            const c=r.categories,a=r.audits;
+            return {
+              run:index,
+              performance:Math.round(c.performance.score*100),
+              accessibility:Math.round(c.accessibility.score*100),
+              bestPractices:Math.round(c['best-practices'].score*100),
+              seo:Math.round(c.seo.score*100),
+              fcp:a['first-contentful-paint'].numericValue,
+              lcp:a['largest-contentful-paint'].numericValue,
+              tbt:a['total-blocking-time'].numericValue,
+              cls:a['cumulative-layout-shift'].numericValue,
+              speedIndex:a['speed-index'].numericValue,
+              longTasks:a['long-tasks']?.details?.items ?? [],
+              mainThread:a['mainthread-work-breakdown']?.details?.items ?? [],
+              dom:a['dom-size']?.details?.items ?? [],
+            };
+          });
+          const median=(values)=>[...values].sort((a,b)=>a-b)[Math.floor(values.length/2)];
+          const result={
+            runs,
+            median:{
+              performance:median(runs.map(r=>r.performance)),
+              accessibility:median(runs.map(r=>r.accessibility)),
+              bestPractices:median(runs.map(r=>r.bestPractices)),
+              seo:median(runs.map(r=>r.seo)),
+              fcp:median(runs.map(r=>r.fcp)),
+              lcp:median(runs.map(r=>r.lcp)),
+              tbt:median(runs.map(r=>r.tbt)),
+              cls:median(runs.map(r=>r.cls)),
+              speedIndex:median(runs.map(r=>r.speedIndex)),
+            }
+          };
+          fs.writeFileSync('MOBILE_STABILITY_AUDIT.md',`# Mobile performance stability audit\n\n\`\`\`json\n${JSON.stringify(result,null,2)}\n\`\`\`\n`);
+          console.log(result);
+          NODE
+      - name: Publish stability report
+        if: always()
+        run: |
+          rm -f .github/workflows/mobile-stability-audit.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "audit: publish three-run mobile stability results" || true
+          git pull --rebase origin preview
+          git push origin HEAD:preview
