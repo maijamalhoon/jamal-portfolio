@@ -65,7 +65,7 @@
     try { localStorage.setItem('jamal-theme', selected); } catch {}
     const label = one('[data-theme-label]');
     if (label) label.textContent = themeNames[selected];
-    document.querySelectorAll('[data-theme]').forEach((button) => {
+    document.querySelectorAll('button[data-theme]').forEach((button) => {
       button.setAttribute('aria-checked', String(button.dataset.theme === selected));
     });
   };
@@ -91,7 +91,7 @@
       return;
     }
 
-    const themeOption = target.closest('[data-theme]');
+    const themeOption = target.closest('button[data-theme]');
     if (themeOption) {
       setTheme(themeOption.dataset.theme || 'noir');
       closeThemeMenu();
