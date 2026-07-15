@@ -2,11 +2,14 @@
   "name": "jamal-portfolio",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20.9 <23"
+  },
   "scripts": {
     "dev": "next dev",
     "prebuild": "node scripts/generate-resume.mjs",
     "build": "next build",
-    "start": "next start",
+    "start": "node scripts/serve-static.mjs",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "check": "npm run lint && npm run build && npm run typecheck"
