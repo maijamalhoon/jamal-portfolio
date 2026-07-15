@@ -1,0 +1,517 @@
+/* Premium interaction layer — preserves the existing themes, icons and visual language. */
+
+:root {
+  --ease-premium: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Header polish */
+.site-header {
+  overflow: visible;
+  box-shadow:
+    0 18px 60px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 color-mix(in srgb, var(--text) 7%, transparent);
+  transition:
+    border-color 0.35s var(--ease-premium),
+    background 0.35s var(--ease-premium),
+    box-shadow 0.35s var(--ease-premium),
+    transform 0.35s var(--ease-premium);
+}
+
+.site-header::after {
+  content: "";
+  position: absolute;
+  inset: auto 18px -1px;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.42;
+}
+
+.brand-mark,
+.header-cta,
+.button-primary {
+  position: relative;
+  overflow: hidden;
+}
+
+.brand-mark::after,
+.header-cta::after,
+.button-primary::after {
+  content: "";
+  position: absolute;
+  inset: -60% auto -60% -55%;
+  width: 42%;
+  transform: skewX(-20deg);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.42), transparent);
+  transition: left 0.7s var(--ease-premium);
+}
+
+.brand:hover .brand-mark::after,
+.header-cta:hover::after,
+.button-primary:hover::after {
+  left: 120%;
+}
+
+.desktop-nav a::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0;
+  transform: translate(-50%, 5px) scale(0.5);
+  transition: opacity 0.25s ease, transform 0.25s var(--ease-spring);
+}
+
+.desktop-nav a[aria-current="page"]::after,
+.desktop-nav a:hover::after {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
+}
+
+/* Better tactile feedback without native browser-looking controls */
+:where(.button, .header-cta, .theme-trigger, .mobile-menu-button, .hero-contact-link, .back-to-top) {
+  transition:
+    transform 0.24s var(--ease-premium),
+    border-color 0.24s ease,
+    background 0.24s ease,
+    color 0.24s ease,
+    box-shadow 0.24s ease;
+}
+
+:where(.button, .header-cta, .theme-trigger, .mobile-menu-button, .back-to-top):active {
+  transform: translateY(1px) scale(0.975);
+}
+
+.mobile-menu-button:hover,
+.theme-trigger:hover,
+.back-to-top:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-strong);
+  box-shadow: 0 12px 34px var(--glow);
+}
+
+/* Hero depth */
+.hero::after {
+  content: "";
+  position: absolute;
+  inset: 12% 2% auto auto;
+  z-index: -1;
+  width: clamp(180px, 24vw, 390px);
+  aspect-ratio: 1;
+  border: 1px solid color-mix(in srgb, var(--accent) 16%, transparent);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 28px color-mix(in srgb, var(--accent) 3%, transparent),
+    0 0 0 68px color-mix(in srgb, var(--accent) 2%, transparent);
+  opacity: 0.72;
+  animation: premium-orbit-breathe 8s ease-in-out infinite;
+}
+
+.portrait-frame {
+  box-shadow:
+    0 28px 100px rgba(0, 0, 0, 0.4),
+    0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--text) 8%, transparent);
+  transition: transform 0.7s var(--ease-premium), box-shadow 0.7s var(--ease-premium);
+}
+
+.portrait-stage:hover .portrait-frame {
+  transform: translateY(-8px) scale(1.012);
+  box-shadow:
+    0 38px 120px rgba(0, 0, 0, 0.48),
+    0 0 52px var(--glow),
+    0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.floating-chip,
+.portrait-glass {
+  backdrop-filter: blur(18px) saturate(150%);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.24);
+}
+
+.floating-chip {
+  animation: premium-chip-float 5.5s ease-in-out infinite;
+}
+
+.chip-two {
+  animation-delay: -2.2s;
+}
+
+/* Section rhythm and scannability */
+.section-heading h2 {
+  position: relative;
+  text-wrap: balance;
+}
+
+.section-heading h2::after {
+  content: "";
+  display: block;
+  width: clamp(54px, 8vw, 110px);
+  height: 4px;
+  margin-top: 22px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  box-shadow: 0 0 22px var(--glow);
+  transform-origin: left;
+  transition: width 0.55s var(--ease-premium);
+}
+
+.section:hover .section-heading h2::after,
+.work-section:hover .section-heading h2::after {
+  width: clamp(94px, 14vw, 190px);
+}
+
+:where(.stat-card, .skill-card, .project-card, .education-panel, .github-profile-card, .github-repo-card) {
+  transition:
+    transform 0.42s var(--ease-premium),
+    border-color 0.32s ease,
+    box-shadow 0.42s var(--ease-premium),
+    background 0.32s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :where(.stat-card, .skill-card, .education-panel, .github-profile-card, .github-repo-card):hover {
+    transform: translateY(-7px);
+    border-color: var(--line-strong);
+    box-shadow: 0 28px 80px rgba(0, 0, 0, 0.25), 0 0 34px var(--glow);
+  }
+
+  .project-card:hover {
+    transform: translateY(-9px) scale(1.004);
+    border-color: var(--line-strong);
+    box-shadow: 0 34px 110px rgba(0, 0, 0, 0.32), 0 0 42px var(--glow);
+  }
+
+  .experience-item {
+    position: relative;
+    transition: padding-left 0.42s var(--ease-premium), border-color 0.3s ease;
+  }
+
+  .experience-item::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 26px;
+    bottom: 26px;
+    width: 3px;
+    border-radius: 999px;
+    background: linear-gradient(var(--accent), var(--accent-2));
+    box-shadow: 0 0 20px var(--glow);
+    opacity: 0;
+    transform: scaleY(0.25);
+    transition: opacity 0.32s ease, transform 0.42s var(--ease-premium);
+  }
+
+  .experience-item:hover {
+    padding-left: 16px;
+  }
+
+  .experience-item:hover::before {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+
+  .skill-cloud span:hover,
+  .project-stack span:hover,
+  .github-repo-topics span:hover {
+    transform: translateY(-3px) scale(1.035);
+    border-color: var(--line-strong);
+    background: var(--surface-strong);
+    color: var(--text);
+    box-shadow: 0 10px 26px var(--glow);
+  }
+}
+
+.skill-cloud span,
+.project-stack span,
+.github-repo-topics span {
+  transition:
+    transform 0.22s var(--ease-spring),
+    border-color 0.22s ease,
+    background 0.22s ease,
+    color 0.22s ease,
+    box-shadow 0.22s ease;
+}
+
+.project-visual {
+  isolation: isolate;
+}
+
+.project-visual::after {
+  content: "";
+  position: absolute;
+  inset: 16%;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--glow), transparent 68%);
+  filter: blur(24px);
+  opacity: 0.8;
+  animation: premium-orbit-breathe 7s ease-in-out infinite;
+}
+
+/* Immersive mobile/tablet navigation inspired by the supplied reference. */
+@media (max-width: 1100px) {
+  .mobile-menu {
+    place-items: stretch;
+    overflow: hidden auto;
+    overscroll-behavior: contain;
+    padding:
+      max(86px, calc(env(safe-area-inset-top) + 72px))
+      clamp(24px, 7vw, 72px)
+      max(34px, calc(env(safe-area-inset-bottom) + 24px));
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--bg) 74%, transparent), var(--bg) 92%),
+      radial-gradient(circle at 82% 38%, var(--glow), transparent 32rem),
+      var(--bg);
+    backdrop-filter: blur(28px) saturate(138%);
+    isolation: isolate;
+  }
+
+  .mobile-menu::before {
+    content: "";
+    position: absolute;
+    z-index: -2;
+    width: min(76vw, 580px);
+    aspect-ratio: 0.78;
+    right: clamp(-90px, -8vw, -24px);
+    top: clamp(145px, 18vh, 230px);
+    border: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
+    border-radius: 46% 46% 42% 42% / 30% 30% 62% 62%;
+    background:
+      linear-gradient(180deg, transparent 45%, color-mix(in srgb, var(--bg) 18%, transparent) 76%, var(--bg) 102%),
+      url("https://avatars.githubusercontent.com/u/150429791?v=4") center 22% / cover no-repeat;
+    filter: grayscale(0.12) contrast(1.02);
+    opacity: 0.66;
+    box-shadow:
+      0 0 0 28px color-mix(in srgb, var(--accent) 3%, transparent),
+      0 50px 130px rgba(0, 0, 0, 0.48);
+    mask-image: linear-gradient(to bottom, #000 0 72%, transparent 100%);
+    animation: premium-menu-portrait 8s ease-in-out infinite;
+  }
+
+  .mobile-menu::after {
+    content: "";
+    position: absolute;
+    z-index: -3;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px),
+      radial-gradient(circle at 74% 34%, transparent 0 18%, color-mix(in srgb, var(--accent) 16%, transparent) 18.2% 18.45%, transparent 18.7% 30%, color-mix(in srgb, var(--text) 8%, transparent) 30.2% 30.45%, transparent 30.7%);
+    background-size: 64px 64px, 64px 64px, 100% 100%;
+    opacity: 0.72;
+    animation: premium-menu-grid 18s linear infinite;
+  }
+
+  .mobile-menu-close {
+    position: fixed;
+    z-index: 4;
+    top: max(18px, env(safe-area-inset-top));
+    right: clamp(18px, 4vw, 34px);
+    width: 58px;
+    height: 58px;
+    border-radius: 19px;
+    border-color: var(--line-strong);
+    background: color-mix(in srgb, var(--surface-solid) 78%, transparent);
+    box-shadow:
+      0 18px 48px rgba(0, 0, 0, 0.28),
+      inset 0 1px 0 color-mix(in srgb, var(--text) 8%, transparent);
+    backdrop-filter: blur(18px) saturate(140%);
+    transition: transform 0.28s var(--ease-spring), background 0.25s ease, border-color 0.25s ease;
+  }
+
+  .mobile-menu-close:hover {
+    transform: rotate(6deg) scale(1.04);
+    border-color: var(--accent);
+    background: var(--surface-strong);
+  }
+
+  .mobile-menu-links {
+    position: relative;
+    z-index: 2;
+    align-self: start;
+    width: min(760px, 100%);
+    margin: 0;
+  }
+
+  .mobile-menu-links::before {
+    content: "Explore portfolio";
+    display: block;
+    margin: 0 0 18px 4px;
+    color: var(--muted-strong);
+    font-size: 0.66rem;
+    font-weight: 850;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .mobile-menu-links::after {
+    content: "Select a section · Esc closes menu";
+    display: block;
+    margin: 24px 0 0 4px;
+    color: var(--muted);
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+  }
+
+  .mobile-menu-links a {
+    position: relative;
+    min-height: clamp(74px, 10.4vh, 112px);
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: clamp(12px, 3vw, 26px);
+    padding: 10px 6px;
+    border-bottom-color: color-mix(in srgb, var(--line) 88%, transparent);
+    color: color-mix(in srgb, var(--text) 94%, transparent);
+    font: 610 clamp(2.45rem, 8.8vw, 5.8rem)/0.92 "Space Grotesk Variable", sans-serif;
+    letter-spacing: -0.065em;
+    text-shadow: 0 12px 34px rgba(0, 0, 0, 0.55);
+    transition:
+      color 0.28s ease,
+      padding-left 0.35s var(--ease-premium),
+      border-color 0.28s ease,
+      text-shadow 0.28s ease;
+  }
+
+  .mobile-menu-links a::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 0;
+    height: 2px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    box-shadow: 0 0 18px var(--glow);
+    transform: translateY(-50%);
+    transition: width 0.38s var(--ease-premium);
+  }
+
+  .mobile-menu-links a::after {
+    content: "↗";
+    color: var(--accent);
+    font: 500 1rem/1 "Space Grotesk Variable", sans-serif;
+    opacity: 0;
+    transform: translateX(-12px) rotate(-18deg);
+    transition: opacity 0.28s ease, transform 0.34s var(--ease-spring);
+  }
+
+  .mobile-menu-links a span {
+    justify-self: start;
+    color: var(--accent);
+    font-size: clamp(0.68rem, 1.7vw, 0.86rem);
+    text-shadow: 0 0 20px var(--glow);
+  }
+
+  .mobile-menu-links a:hover,
+  .mobile-menu-links a:focus-visible,
+  .mobile-menu-links a[aria-current="page"] {
+    color: var(--accent);
+    padding-left: 16px;
+    border-bottom-color: var(--line-strong);
+    text-shadow: 0 12px 40px var(--glow);
+  }
+
+  .mobile-menu-links a:hover::before,
+  .mobile-menu-links a:focus-visible::before,
+  .mobile-menu-links a[aria-current="page"]::before {
+    width: 5px;
+  }
+
+  .mobile-menu-links a:hover::after,
+  .mobile-menu-links a:focus-visible::after,
+  .mobile-menu-links a[aria-current="page"]::after {
+    opacity: 1;
+    transform: translateX(0) rotate(0);
+  }
+
+  /* Contact already exists as a real navigation destination; remove the accidental duplicate row. */
+  .mobile-contact-action {
+    display: none;
+  }
+}
+
+@media (max-width: 620px) {
+  .site-header {
+    background: color-mix(in srgb, var(--bg) 74%, transparent);
+    box-shadow:
+      0 14px 44px rgba(0, 0, 0, 0.22),
+      inset 0 1px 0 color-mix(in srgb, var(--text) 7%, transparent);
+  }
+
+  .mobile-menu {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .mobile-menu::before {
+    width: 82vw;
+    right: -22vw;
+    top: 25vh;
+    opacity: 0.5;
+  }
+
+  .mobile-menu-links a {
+    min-height: clamp(70px, 10vh, 92px);
+    grid-template-columns: 38px minmax(0, 1fr) 18px;
+    gap: 9px;
+    font-size: clamp(2.25rem, 12vw, 4rem);
+  }
+
+  .mobile-menu-links::after {
+    content: "Tap a section to continue";
+  }
+
+  .hero::after {
+    right: -24%;
+    top: 16%;
+  }
+
+  .portrait-stage:hover .portrait-frame {
+    transform: none;
+  }
+
+  .project-card:active,
+  .skill-card:active,
+  .stat-card:active,
+  .github-repo-card:active {
+    transform: scale(0.988);
+  }
+}
+
+@keyframes premium-menu-grid {
+  from { background-position: 0 0, 0 0, 0 0; }
+  to { background-position: 64px 64px, 64px 64px, 0 0; }
+}
+
+@keyframes premium-menu-portrait {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  50% { transform: translate3d(-10px, -12px, 0) rotate(-0.7deg); }
+}
+
+@keyframes premium-chip-float {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -7px, 0); }
+}
+
+@keyframes premium-orbit-breathe {
+  0%, 100% { transform: scale(0.94); opacity: 0.45; }
+  50% { transform: scale(1.04); opacity: 0.9; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-menu::after,
+  .mobile-menu::before,
+  .hero::after,
+  .floating-chip,
+  .project-visual::after {
+    animation: none !important;
+  }
+}
