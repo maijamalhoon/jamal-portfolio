@@ -1,0 +1,99 @@
+name: Final interaction hardening
+
+on:
+  push:
+    paths:
+      - .github/FINAL_HARDENING
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Apply verified interaction patches
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace(path: str, old: str, new: str) -> None:
+              file = Path(path)
+              text = file.read_text()
+              if old not in text:
+                  raise SystemExit(f"Expected pattern missing in {path}: {old[:90]!r}")
+              file.write_text(text.replace(old, new, 1))
+
+          replace(
+              "src/components/portfolio-page.tsx",
+              "  const closeRef = useRef<HTMLButtonElement>(null);\n  const panelId = useId();",
+              "  const closeRef = useRef<HTMLButtonElement>(null);\n  const panelId = useId();\n  const previousFocusRef = useRef<HTMLElement | null>(null);",
+          )
+          replace(
+              "src/components/portfolio-page.tsx",
+              "    const previousOverflow = document.body.style.overflow;\n    document.body.style.overflow = \"hidden\";\n    closeRef.current?.focus();",
+              "    const previousOverflow = document.body.style.overflow;\n    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;\n    document.body.style.overflow = \"hidden\";\n    closeRef.current?.focus();",
+          )
+          replace(
+              "src/components/portfolio-page.tsx",
+              "      document.body.style.overflow = previousOverflow;\n      document.removeEventListener(\"keydown\", onKeyDown);\n    };\n  }, [onClose, open, panelId]);",
+              "      document.body.style.overflow = previousOverflow;\n      document.removeEventListener(\"keydown\", onKeyDown);\n      previousFocusRef.current?.focus();\n    };\n  }, [onClose, open, panelId]);",
+          )
+          replace(
+              "src/components/portfolio-page.tsx",
+              "          onClick={() => window.scrollTo({ top: 0, behavior: \"smooth\" })}",
+              "          onClick={() =>\n            window.scrollTo({\n              top: 0,\n              behavior: window.matchMedia(\"(prefers-reduced-motion: reduce)\").matches ? \"auto\" : \"smooth\",\n            })\n          }",
+          )
+          replace(
+              "src/components/portfolio-page.tsx",
+              "      <motion.div className=\"scroll-progress\" style={{ scaleX: progress }} />",
+              "      <motion.div className=\"scroll-progress\" style={{ scaleX: progress }} aria-hidden />",
+          )
+          replace(
+              "src/components/portfolio-page.tsx",
+              "        <main id=\"main-content\">",
+              "        <main id=\"main-content\" tabIndex={-1}>",
+          )
+
+          replace(
+              "src/components/github-live.tsx",
+              "      setSnapshot(nextSnapshot);\n      setState(\"live\");\n      window.localStorage.setItem(CACHE_KEY, JSON.stringify(nextSnapshot));",
+              "      setSnapshot(nextSnapshot);\n      setState(\"live\");\n      try {\n        window.localStorage.setItem(CACHE_KEY, JSON.stringify(nextSnapshot));\n      } catch {\n        // Live data remains visible when storage is unavailable or full.\n      }",
+          )
+          replace(
+              "src/components/github-live.tsx",
+              "          <div className=\"github-repo-grid\" aria-live=\"polite\">\n            {snapshot.repos.map((repo, index) => (",
+              "          <div className=\"github-repo-grid\" aria-live=\"polite\" aria-busy={refreshing}>\n            {snapshot.repos.length ? snapshot.repos.map((repo, index) => (",
+          )
+          replace(
+              "src/components/github-live.tsx",
+              "              ))}\n          </div>",
+              "              )) : (\n                <div className=\"github-empty-state\">\n                  <div>\n                    <strong>New public work will appear here automatically.</strong>\n                    <p>No separate public repository is available right now. The live GitHub profile remains accessible, and this section will update after the next public project is published.</p>\n                    <a href={snapshot.profile.html_url} target=\"_blank\" rel=\"noreferrer\">Open GitHub profile</a>\n                  </div>\n                </div>\n              )}\n          </div>",
+          )
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify final production release
+        run: npm run check
+
+      - name: Commit verified hardening
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/FINAL_HARDENING .github/workflows/final-hardening.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: complete final accessibility and reliability hardening"
+          git push
