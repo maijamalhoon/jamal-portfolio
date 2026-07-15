@@ -1,0 +1,189 @@
+name: Preview release audit
+
+on:
+  push:
+    paths:
+      - .github/workflows/preview-release-audit.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: preview
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install and verify source
+        id: build
+        continue-on-error: true
+        env:
+          GITHUB_ACTIONS: "true"
+          NEXT_PUBLIC_SITE_URL: https://maijamalhoon.github.io/jamal-portfolio
+        run: |
+          npm ci
+          npm run check
+          node --check public/portfolio.js
+
+      - name: Start production preview
+        id: server
+        if: steps.build.outcome == 'success'
+        continue-on-error: true
+        run: |
+          npm start >/tmp/portfolio-server.log 2>&1 &
+          for attempt in {1..40}; do
+            curl --fail --silent --compressed http://127.0.0.1:3000/jamal-portfolio/ >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/portfolio-server.log
+          exit 1
+
+      - name: Install audit browser
+        id: browser
+        if: steps.server.outcome == 'success'
+        continue-on-error: true
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.55.0 lighthouse@12.8.2
+          npx playwright install --with-deps chromium
+
+      - name: Run Lighthouse on clean browser sessions
+        id: lighthouse
+        if: steps.browser.outcome == 'success'
+        continue-on-error: true
+        run: |
+          CHROME_PATH="$(node -e "const { chromium } = require('@playwright/test'); process.stdout.write(chromium.executablePath())")"
+          npx lighthouse http://127.0.0.1:3000/jamal-portfolio/ --quiet \
+            --chrome-path="$CHROME_PATH" --chrome-flags="--headless --no-sandbox" \
+            --only-categories=performance,accessibility,best-practices,seo \
+            --output=json --output-path=/tmp/lighthouse-mobile.json
+          npx lighthouse http://127.0.0.1:3000/jamal-portfolio/ --quiet \
+            --chrome-path="$CHROME_PATH" --chrome-flags="--headless --no-sandbox" --preset=desktop \
+            --only-categories=performance,accessibility,best-practices,seo \
+            --output=json --output-path=/tmp/lighthouse-desktop.json
+          node <<'NODE'
+          const fs = require('node:fs');
+          const read = (path) => {
+            const report = JSON.parse(fs.readFileSync(path, 'utf8'));
+            const c = report.categories;
+            const a = report.audits;
+            return {
+              performance: Math.round(c.performance.score * 100),
+              accessibility: Math.round(c.accessibility.score * 100),
+              bestPractices: Math.round(c['best-practices'].score * 100),
+              seo: Math.round(c.seo.score * 100),
+              fcp: a['first-contentful-paint'].displayValue,
+              lcp: a['largest-contentful-paint'].displayValue,
+              tbt: a['total-blocking-time'].displayValue,
+              cls: a['cumulative-layout-shift'].displayValue,
+              speedIndex: a['speed-index'].displayValue,
+            };
+          };
+          const result = { mobile: read('/tmp/lighthouse-mobile.json'), desktop: read('/tmp/lighthouse-desktop.json') };
+          fs.writeFileSync('/tmp/lighthouse-result.json', JSON.stringify(result, null, 2));
+          console.log(result);
+          const allPerfect = Object.values(result).every((mode) =>
+            mode.performance === 100 && mode.accessibility === 100 && mode.bestPractices === 100 && mode.seo === 100
+          );
+          if (!allPerfect) process.exit(1);
+          NODE
+
+      - name: Verify mobile, tablet and desktop interactions
+        id: ui
+        if: steps.browser.outcome == 'success'
+        continue-on-error: true
+        run: |
+          cat > final-preview-ui.mjs <<'JS'
+          import { chromium } from '@playwright/test';
+          import { writeFile } from 'node:fs/promises';
+
+          const devices = [
+            { name: 'mobile', width: 390, height: 844, screenshot: 'public/preview-mobile.png', menuScreenshot: 'public/preview-mobile-menu.png' },
+            { name: 'tablet', width: 768, height: 1024 },
+            { name: 'desktop', width: 1440, height: 900, screenshot: 'public/preview-desktop.png' },
+          ];
+          const results = [];
+          const browser = await chromium.launch({ headless: true });
+
+          for (const device of devices) {
+            const errors = [];
+            const context = await browser.newContext({ viewport: { width: device.width, height: device.height } });
+            const page = await context.newPage();
+            page.on('pageerror', (error) => errors.push(`pageerror: ${error.message}`));
+            page.on('console', (message) => { if (message.type() === 'error') errors.push(`console: ${message.text()}`); });
+            try {
+              await page.goto('http://127.0.0.1:3000/jamal-portfolio/', { waitUntil: 'networkidle', timeout: 30000 });
+              const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+              if (overflow > 2) errors.push(`horizontal overflow ${overflow}px`);
+              if (await page.locator('h1').count() !== 1) errors.push('invalid h1 count');
+              const heading = await page.locator('h1').boundingBox();
+              if (!heading || heading.x < -2 || heading.x + heading.width > device.width + 2) errors.push(`heading clipped ${JSON.stringify(heading)}`);
+              if (!(await page.locator('.portrait-frame img').isVisible())) errors.push('hero portrait hidden');
+              if (device.screenshot) await page.screenshot({ path: device.screenshot, fullPage: false });
+
+              if (device.width <= 1050) {
+                await page.locator('[data-menu-open]').click();
+                await page.locator('[data-mobile-menu]').waitFor({ state: 'visible' });
+                if (await page.locator('[data-menu-link]').count() !== 6) errors.push('mobile menu must contain six links');
+                if (!(await page.locator('.menu-portrait').isVisible())) errors.push('mobile menu portrait hidden');
+                if (device.menuScreenshot) await page.screenshot({ path: device.menuScreenshot, fullPage: false });
+                await page.locator('[data-menu-close]').click();
+                await page.locator('[data-mobile-menu]').waitFor({ state: 'hidden' });
+              }
+
+              await page.locator('[data-theme-button]').click();
+              await page.locator('button[data-theme="cobalt"]').click();
+              if (await page.locator('html').getAttribute('data-theme') !== 'cobalt') errors.push('theme switch failed');
+
+              await page.locator('[data-contact-open]:visible').first().click();
+              await page.locator('[data-contact-modal]').waitFor({ state: 'visible' });
+              if (!(await page.locator('[data-contact-modal] a', { hasText: 'Open LinkedIn' }).isVisible())) errors.push('LinkedIn action hidden');
+              if (!(await page.locator('[data-contact-modal] a', { hasText: 'Open GitHub' }).isVisible())) errors.push('GitHub action hidden');
+              await page.locator('.modal-head [data-contact-close]').click();
+              await page.locator('[data-contact-modal]').waitFor({ state: 'hidden' });
+            } catch (error) {
+              errors.push(error.stack || error.message);
+            }
+            results.push({ device: device.name, viewport: `${device.width}x${device.height}`, errors });
+            await context.close();
+          }
+
+          await browser.close();
+          await writeFile('/tmp/ui-result.json', JSON.stringify(results, null, 2));
+          console.log(results);
+          if (results.some((result) => result.errors.length)) process.exit(1);
+          JS
+          node final-preview-ui.mjs
+
+      - name: Publish preview audit
+        if: always()
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const lighthouse = fs.existsSync('/tmp/lighthouse-result.json') ? JSON.parse(fs.readFileSync('/tmp/lighthouse-result.json', 'utf8')) : null;
+          const ui = fs.existsSync('/tmp/ui-result.json') ? JSON.parse(fs.readFileSync('/tmp/ui-result.json', 'utf8')) : null;
+          const outcomes = {
+            build: '${{ steps.build.outcome }}',
+            server: '${{ steps.server.outcome }}',
+            browser: '${{ steps.browser.outcome }}',
+            lighthouse: '${{ steps.lighthouse.outcome }}',
+            ui: '${{ steps.ui.outcome }}',
+          };
+          const markdown = `# Final preview release audit\n\nAudited: ${new Date().toISOString()}\n\n## Outcomes\n\n\`\`\`json\n${JSON.stringify(outcomes, null, 2)}\n\`\`\`\n\n## Lighthouse\n\n\`\`\`json\n${JSON.stringify(lighthouse, null, 2)}\n\`\`\`\n\n## Responsive UI\n\n\`\`\`json\n${JSON.stringify(ui, null, 2)}\n\`\`\`\n`;
+          fs.writeFileSync('FINAL_PREVIEW_AUDIT.md', markdown);
+          NODE
+          rm -f final-preview-ui.mjs .github/workflows/preview-release-audit.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "audit: publish isolated preview release verification" || true
+          git pull --rebase origin preview
+          git push origin HEAD:preview
