@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "@fontsource-variable/manrope";
 import "@fontsource-variable/space-grotesk";
-import { siteUrl } from "@/lib/site";
+import { basePath, siteUrl } from "@/lib/site";
 import "./globals.css";
 
 const themeBootScript = `(() => {
@@ -35,6 +35,11 @@ export const metadata: Metadata = {
   creator: "Jamal Yaqoob",
   applicationName: "Jamal Yaqoob Portfolio",
   category: "portfolio",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 },
+  },
   openGraph: {
     url: siteUrl,
     siteName: "Jamal Yaqoob Portfolio",
@@ -51,7 +56,10 @@ export const metadata: Metadata = {
     images: ["https://avatars.githubusercontent.com/u/150429791?v=4"],
   },
   alternates: { canonical: siteUrl },
-  icons: { icon: "/icon.svg" },
+  icons: {
+    icon: [{ url: `${basePath}/icon.svg`, type: "image/svg+xml" }],
+    shortcut: `${basePath}/icon.svg`,
+  },
   appleWebApp: {
     capable: true,
     title: "Jamal Yaqoob",
@@ -63,6 +71,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  colorScheme: "dark light",
   themeColor: [
     { media: "(prefers-color-scheme: dark)", color: "#070709" },
     { media: "(prefers-color-scheme: light)", color: "#f3f0e8" },
@@ -73,6 +82,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" data-theme="noir" suppressHydrationWarning>
       <head>
+        <link rel="preconnect" href="https://avatars.githubusercontent.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="//api.github.com" />
         <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
       </head>
       <body>{children}</body>
