@@ -4,6 +4,7 @@ import { extname, join, normalize, resolve, sep } from "node:path";
 
 const root = resolve(process.cwd(), "out");
 const port = Number.parseInt(process.env.PORT ?? "3000", 10);
+const supportedBasePaths = ["/jamal-portfolio"];
 
 const mimeTypes = {
   ".css": "text/css; charset=utf-8",
@@ -21,14 +22,23 @@ const mimeTypes = {
   ".woff2": "font/woff2",
 };
 
+function stripSupportedBasePath(pathname) {
+  for (const basePath of supportedBasePaths) {
+    if (pathname === basePath) return "/";
+    if (pathname.startsWith(`${basePath}/`)) return pathname.slice(basePath.length) || "/";
+  }
+  return pathname;
+}
+
 function resolveRequest(pathname) {
   const decoded = decodeURIComponent(pathname).replaceAll("\\", "/");
-  const safePath = normalize(decoded).replace(/^([.][.][/\\])+/, "");
+  const routedPath = stripSupportedBasePath(decoded);
+  const safePath = normalize(routedPath).replace(/^([.][.][/\\])+/, "");
   const requested = resolve(root, `.${sep}${safePath}`);
   if (!requested.startsWith(root + sep) && requested !== root) return null;
 
   const candidates = [requested];
-  if (decoded.endsWith("/")) candidates.unshift(join(requested, "index.html"));
+  if (routedPath.endsWith("/")) candidates.unshift(join(requested, "index.html"));
   else candidates.push(join(requested, "index.html"));
 
   return candidates.find((candidate) => existsSync(candidate) && statSync(candidate).isFile()) ?? null;
