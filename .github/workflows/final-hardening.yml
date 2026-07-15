@@ -25,58 +25,82 @@ jobs:
       - name: Apply verified interaction patches
         id: patch
         continue-on-error: true
-        shell: python
+        shell: bash
         run: |
+          python <<'PY' > .github/hardening-patch.log 2>&1
           from pathlib import Path
 
-          def replace(path: str, old: str, new: str) -> None:
-              file = Path(path)
-              text = file.read_text()
+          def require_replace(text: str, old: str, new: str, label: str) -> str:
               if old not in text:
-                  raise SystemExit(f"Expected pattern missing in {path}: {old[:110]!r}")
-              file.write_text(text.replace(old, new, 1))
+                  raise SystemExit(f"Missing pattern: {label}")
+              return text.replace(old, new, 1)
 
-          replace(
-              "src/components/portfolio-page.tsx",
+          portfolio_path = Path("src/components/portfolio-page.tsx")
+          portfolio = portfolio_path.read_text()
+          contact_start = portfolio.index("function ContactPanel(")
+          before_contact = portfolio[:contact_start]
+          contact = portfolio[contact_start:]
+
+          contact = require_replace(
+              contact,
               "  const closeRef = useRef<HTMLButtonElement>(null);\n  const panelId = useId();\n\n  useEffect(() => {\n    if (!open) return;\n    const previousOverflow = document.body.style.overflow;\n    document.body.style.overflow = \"hidden\";\n    closeRef.current?.focus();",
               "  const closeRef = useRef<HTMLButtonElement>(null);\n  const panelId = useId();\n  const previousFocusRef = useRef<HTMLElement | null>(null);\n\n  useEffect(() => {\n    if (!open) return;\n    const previousOverflow = document.body.style.overflow;\n    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;\n    document.body.style.overflow = \"hidden\";\n    closeRef.current?.focus();",
+              "contact panel focus capture",
           )
-          replace(
-              "src/components/portfolio-page.tsx",
+          contact = require_replace(
+              contact,
               "      document.body.style.overflow = previousOverflow;\n      document.removeEventListener(\"keydown\", onKeyDown);\n    };\n  }, [onClose, open, panelId]);",
               "      document.body.style.overflow = previousOverflow;\n      document.removeEventListener(\"keydown\", onKeyDown);\n      previousFocusRef.current?.focus();\n    };\n  }, [onClose, open, panelId]);",
+              "contact panel focus restore",
           )
-          replace(
-              "src/components/portfolio-page.tsx",
+          portfolio = before_contact + contact
+          portfolio = require_replace(
+              portfolio,
               "          onClick={() => window.scrollTo({ top: 0, behavior: \"smooth\" })}",
               "          onClick={() =>\n            window.scrollTo({\n              top: 0,\n              behavior: window.matchMedia(\"(prefers-reduced-motion: reduce)\").matches ? \"auto\" : \"smooth\",\n            })\n          }",
+              "reduced-motion back-to-top",
           )
-          replace(
-              "src/components/portfolio-page.tsx",
+          portfolio = require_replace(
+              portfolio,
               "      <motion.div className=\"scroll-progress\" style={{ scaleX: progress }} />",
               "      <motion.div className=\"scroll-progress\" style={{ scaleX: progress }} aria-hidden />",
+              "decorative progress semantics",
           )
-          replace(
-              "src/components/portfolio-page.tsx",
+          portfolio = require_replace(
+              portfolio,
               "        <main id=\"main-content\">",
               "        <main id=\"main-content\" tabIndex={-1}>",
+              "skip-link focus target",
           )
+          portfolio_path.write_text(portfolio)
 
-          replace(
-              "src/components/github-live.tsx",
+          github_path = Path("src/components/github-live.tsx")
+          github = github_path.read_text()
+          github = require_replace(
+              github,
               "      setSnapshot(nextSnapshot);\n      setState(\"live\");\n      window.localStorage.setItem(CACHE_KEY, JSON.stringify(nextSnapshot));",
               "      setSnapshot(nextSnapshot);\n      setState(\"live\");\n      try {\n        window.localStorage.setItem(CACHE_KEY, JSON.stringify(nextSnapshot));\n      } catch {\n        // Live data remains visible when storage is unavailable or full.\n      }",
+              "storage failure isolation",
           )
-          replace(
-              "src/components/github-live.tsx",
+
+          grid_start = github.index('          <div className="github-repo-grid" aria-live="polite">')
+          before_grid = github[:grid_start]
+          grid = github[grid_start:]
+          grid = require_replace(
+              grid,
               "          <div className=\"github-repo-grid\" aria-live=\"polite\">\n            {snapshot.repos.map((repo, index) => (",
               "          <div className=\"github-repo-grid\" aria-live=\"polite\" aria-busy={refreshing}>\n            {snapshot.repos.length ? snapshot.repos.map((repo, index) => (",
+              "repository busy state",
           )
-          replace(
-              "src/components/github-live.tsx",
-              "              ))}\n          </div>",
-              "              )) : (\n                <div className=\"github-empty-state\">\n                  <div>\n                    <strong>New public work will appear here automatically.</strong>\n                    <p>No separate public repository is available right now. The live GitHub profile remains accessible, and this section will update after the next public project is published.</p>\n                    <a href={snapshot.profile.html_url} target=\"_blank\" rel=\"noreferrer\">Open GitHub profile</a>\n                  </div>\n                </div>\n              )}\n          </div>",
+          grid = require_replace(
+              grid,
+              "            ))}\n          </div>",
+              "            )) : (\n              <div className=\"github-empty-state\">\n                <div>\n                  <strong>New public work will appear here automatically.</strong>\n                  <p>No separate public repository is available right now. The live GitHub profile remains accessible, and this section will update after the next public project is published.</p>\n                  <a href={snapshot.profile.html_url} target=\"_blank\" rel=\"noreferrer\">Open GitHub profile</a>\n                </div>\n              </div>\n            )}\n          </div>",
+              "repository empty state",
           )
+          github_path.write_text(before_grid + grid)
+          print("All interaction patches applied")
+          PY
 
       - name: Install dependencies
         id: install
@@ -102,11 +126,14 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           if [[ "$patch" == "success" && "$install" == "success" && "$verify" == "success" ]]; then
-            rm -f .github/FINAL_HARDENING .github/HARDENING_RESULT.md .github/workflows/final-hardening.yml
+            rm -f .github/FINAL_HARDENING .github/HARDENING_RESULT.md .github/hardening-patch.log .github/workflows/final-hardening.yml
             git add -A
             git commit -m "fix: complete final accessibility and reliability hardening"
+            git pull --rebase origin main
             git push
           else
+            log="No patch log available"
+            if [[ -f .github/hardening-patch.log ]]; then log="$(cat .github/hardening-patch.log)"; fi
             git reset --hard HEAD
             cat > .github/HARDENING_RESULT.md <<EOF
           # Final hardening result
@@ -115,9 +142,16 @@ jobs:
           - Install: $install
           - Verification: $verify
           - Source commit: $GITHUB_SHA
+
+          ## Patch log
+
+          \`\`\`
+          $log
+          \`\`\`
           EOF
             git add .github/HARDENING_RESULT.md
             git commit -m "ci: record final hardening failure"
+            git pull --rebase origin main
             git push
             exit 1
           fi
