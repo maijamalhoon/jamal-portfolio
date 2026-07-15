@@ -22,5 +22,5 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", colorScheme: "dark light", themeColor: [{ media: "(prefers-color-scheme: dark)", color: "#070709" }, { media: "(prefers-color-scheme: light)", color: "#f3f0e8" }] };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en" data-theme="noir" suppressHydrationWarning><head><script dangerouslySetInnerHTML={{ __html: themeBoot }}/><script src={`${basePath}/portfolio.js`} defer/></head><body>{children}</body></html>;
+  return <html lang="en" data-theme="noir" suppressHydrationWarning><head><link rel="preload" href={`${basePath}/jamal-yaqoob.webp`} as="image" type="image/webp"/><script dangerouslySetInnerHTML={{ __html: themeBoot }}/><script src={`${basePath}/portfolio.js`} defer/></head><body>{children}</body></html>;
 }
