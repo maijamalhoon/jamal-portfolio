@@ -1,0 +1,64 @@
+name: Performance audit v3
+
+on:
+  push:
+    paths:
+      - .github/PERF_AUDIT_V3
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Build stripped static release
+        env:
+          GITHUB_ACTIONS: "true"
+          NEXT_PUBLIC_SITE_URL: https://maijamalhoon.github.io/jamal-portfolio
+        run: npm run check
+      - name: Verify stripped homepage
+        run: |
+          test -s out/index.html
+          test -s out/jamal-yaqoob.webp
+          test "$(grep -o '/_next/static/[^\" ]*\.js' out/index.html | wc -l | tr -d ' ')" = "0"
+          grep -q '/portfolio.js' out/index.html
+      - name: Start preview
+        run: |
+          npm start >/tmp/server.log 2>&1 &
+          for i in {1..40}; do curl -fsS http://127.0.0.1:3000/jamal-portfolio/ >/dev/null && exit 0; sleep 1; done
+          cat /tmp/server.log
+          exit 1
+      - name: Install Lighthouse
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.55.0 lighthouse@12.8.2
+          npx playwright install --with-deps chromium
+      - name: Run audits
+        run: |
+          CHROME_PATH="$(node -e "const { chromium } = require('@playwright/test'); process.stdout.write(chromium.executablePath())")"
+          npx lighthouse http://127.0.0.1:3000/jamal-portfolio/ --quiet --chrome-path="$CHROME_PATH" --chrome-flags="--headless --no-sandbox" --only-categories=performance,accessibility,best-practices,seo --output=json --output-path=/tmp/mobile.json
+          npx lighthouse http://127.0.0.1:3000/jamal-portfolio/ --quiet --chrome-path="$CHROME_PATH" --chrome-flags="--headless --no-sandbox" --preset=desktop --only-categories=performance,accessibility,best-practices,seo --output=json --output-path=/tmp/desktop.json
+          node <<'NODE'
+          const fs=require('node:fs');
+          const score=p=>{const r=JSON.parse(fs.readFileSync(p));const c=r.categories,a=r.audits;return{performance:Math.round(c.performance.score*100),accessibility:Math.round(c.accessibility.score*100),bestPractices:Math.round(c['best-practices'].score*100),seo:Math.round(c.seo.score*100),fcp:a['first-contentful-paint'].displayValue,lcp:a['largest-contentful-paint'].displayValue,tbt:a['total-blocking-time'].displayValue,cls:a['cumulative-layout-shift'].displayValue,speedIndex:a['speed-index'].displayValue}};
+          const mobile=score('/tmp/mobile.json'),desktop=score('/tmp/desktop.json');
+          fs.writeFileSync('PERF_RESULT_V3.md',`# Performance audit v3\n\n\`\`\`json\n${JSON.stringify({mobile,desktop},null,2)}\n\`\`\`\n`);
+          console.log({mobile,desktop});
+          NODE
+      - name: Publish
+        if: always()
+        run: |
+          rm -f .github/PERF_AUDIT_V3 .github/workflows/perf-audit-v3.yml PERF_DIAGNOSTIC_V2.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "audit: publish stripped-runtime performance results" || exit 0
+          git pull --rebase origin main
+          git push
