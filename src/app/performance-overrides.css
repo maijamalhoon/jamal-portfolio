@@ -1,0 +1,67 @@
+/* Visible-first rendering: preserve premium motion without delaying content paint. */
+.section,
+.education-section,
+.contact,
+footer {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 760px;
+}
+
+@keyframes hero-transform-in {
+  from { transform: translate3d(0, 14px, 0); }
+  to { transform: translate3d(0, 0, 0); }
+}
+
+@keyframes portrait-transform-in {
+  from { transform: translate3d(0, 16px, 0) scale(.985); }
+  to { transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .availability,
+  .hero h1,
+  .hero-copy > p,
+  .hero-actions,
+  .hero-meta {
+    animation-name: hero-transform-in;
+    opacity: 1;
+  }
+
+  .portrait-stage {
+    animation-name: portrait-transform-in;
+    opacity: 1;
+  }
+}
+
+@media (max-width: 760px) {
+  .site-header {
+    background: var(--bg2);
+    backdrop-filter: none;
+  }
+
+  .portrait-label {
+    background: var(--bg2);
+    backdrop-filter: none;
+  }
+
+  .availability,
+  .hero h1,
+  .hero-copy > p,
+  .hero-actions,
+  .hero-meta {
+    animation-duration: 320ms !important;
+    animation-delay: 0ms !important;
+  }
+
+  .portrait-stage {
+    animation-duration: 380ms !important;
+    animation-delay: 40ms !important;
+  }
+
+  .section,
+  .education-section,
+  .contact,
+  footer {
+    contain-intrinsic-size: auto 620px;
+  }
+}
