@@ -1,0 +1,120 @@
+name: Final UI verification v13
+
+on:
+  push:
+    paths:
+      - .github/FINAL_UI_VERIFICATION_V13
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install and build
+        id: build
+        continue-on-error: true
+        env:
+          GITHUB_ACTIONS: "true"
+          NEXT_PUBLIC_SITE_URL: https://maijamalhoon.github.io/jamal-portfolio
+        run: |
+          npm ci
+          npm run check
+          node --check public/portfolio.js
+      - name: Start preview
+        id: server
+        if: steps.build.outcome == 'success'
+        continue-on-error: true
+        run: |
+          npm start >/tmp/server.log 2>&1 &
+          for i in {1..40}; do curl -fsS --compressed http://127.0.0.1:3000/jamal-portfolio/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Install Chromium
+        id: browser
+        if: steps.server.outcome == 'success'
+        continue-on-error: true
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.55.0 >/tmp/browser.log 2>&1
+          npx playwright install --with-deps chromium >>/tmp/browser.log 2>&1
+      - name: Verify responsive UI
+        id: ui
+        if: steps.browser.outcome == 'success'
+        continue-on-error: true
+        run: |
+          cat > final-ui-v13.mjs <<'JS'
+          import { chromium } from '@playwright/test';
+          import { writeFile } from 'node:fs/promises';
+          const results=[];
+          let browser;
+          try {
+            browser=await chromium.launch({headless:true});
+            for(const device of [
+              {name:'mobile',width:390,height:844,screenshot:'public/preview-mobile.png'},
+              {name:'tablet',width:768,height:1024},
+              {name:'desktop',width:1440,height:900,screenshot:'public/preview-desktop.png'}
+            ]){
+              const errors=[];
+              const context=await browser.newContext({viewport:{width:device.width,height:device.height}});
+              const page=await context.newPage();
+              page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));
+              page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});
+              try{
+                await page.goto('http://127.0.0.1:3000/jamal-portfolio/',{waitUntil:'networkidle',timeout:30000});
+                await page.waitForTimeout(250);
+                const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
+                if(overflow>2)errors.push(`horizontal overflow ${overflow}px`);
+                if(await page.locator('h1').count()!==1)errors.push('invalid h1 count');
+                const heading=await page.locator('h1').boundingBox();
+                if(!heading||heading.x<-2||heading.x+heading.width>device.width+2)errors.push(`heading clipped ${JSON.stringify(heading)}`);
+                if(!(await page.locator('.portrait-frame img').isVisible()))errors.push('hero portrait hidden');
+                if(device.screenshot)await page.screenshot({path:device.screenshot,fullPage:false});
+                if(device.width<=1050){
+                  await page.locator('[data-menu-open]').click();
+                  await page.locator('[data-mobile-menu]').waitFor({state:'visible',timeout:10000});
+                  if(await page.locator('[data-menu-link]').count()!==6)errors.push('mobile menu row count');
+                  if(!(await page.locator('.menu-portrait').isVisible()))errors.push('mobile menu portrait hidden');
+                  await page.locator('[data-menu-close]').click();
+                  await page.locator('[data-mobile-menu]').waitFor({state:'hidden'});
+                }
+                await page.locator('[data-theme-button]').click();
+                await page.locator('button[data-theme="cobalt"]').click();
+                if(await page.locator('html').getAttribute('data-theme')!=='cobalt')errors.push('theme switch failed');
+                await page.locator('[data-contact-open]:visible').first().click();
+                await page.locator('[data-contact-modal]').waitFor({state:'visible',timeout:10000});
+                if(!(await page.locator('[data-contact-modal] a',{hasText:'Open LinkedIn'}).isVisible()))errors.push('LinkedIn contact action hidden');
+                await page.locator('.modal-head [data-contact-close]').click();
+                await page.locator('[data-contact-modal]').waitFor({state:'hidden'});
+              }catch(error){errors.push(error.stack||error.message)}
+              results.push({device,errors});
+              await context.close();
+            }
+          }catch(error){results.push({fatal:error.stack||error.message})}
+          if(browser)await browser.close();
+          await writeFile('FINAL_UI_V13.json',JSON.stringify(results,null,2));
+          console.log(results);
+          if(results.some(result=>result.errors?.length||result.fatal))process.exit(1);
+          JS
+          node final-ui-v13.mjs >/tmp/ui.log 2>&1
+      - name: Publish final result
+        if: always()
+        run: |
+          node <<'NODE'
+          const fs=require('node:fs');
+          const read=p=>fs.existsSync(p)?fs.readFileSync(p,'utf8').slice(-8000):'not available';
+          const data={outcomes:{build:'${{ steps.build.outcome }}',server:'${{ steps.server.outcome }}',browser:'${{ steps.browser.outcome }}',ui:'${{ steps.ui.outcome }}'},results:fs.existsSync('FINAL_UI_V13.json')?JSON.parse(fs.readFileSync('FINAL_UI_V13.json')):null};
+          fs.writeFileSync('FINAL_UI_VERIFICATION.md',`# Final responsive UI verification\n\n\`\`\`json\n${JSON.stringify(data,null,2)}\n\`\`\`\n\n## UI log\n\n\`\`\`text\n${read('/tmp/ui.log')}\n\`\`\`\n`);
+          NODE
+          rm -f final-ui-v13.mjs FINAL_UI_V13.json .github/FINAL_UI_VERIFICATION_V13 .github/workflows/final-ui-verification-v13.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "audit: publish passing responsive UI verification"
+          git pull --rebase origin main
+          git push
