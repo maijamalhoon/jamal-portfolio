@@ -1,10 +1,73 @@
-/* Visible-first rendering: preserve premium motion without delaying content paint. */
+/* Premium motion with a strict mobile render budget. */
 .section,
 .education-section,
 .contact,
 footer {
   content-visibility: auto;
   contain-intrinsic-size: auto 760px;
+}
+
+.capability-strip {
+  content-visibility: auto;
+  contain-intrinsic-size: 58px;
+}
+
+html,
+body {
+  overscroll-behavior-x: none;
+}
+
+body.overlay-open {
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+}
+
+a,
+button {
+  touch-action: manipulation;
+}
+
+:where(a, button):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.site-header,
+.mobile-menu,
+.mobile-menu-inner,
+.menu-portrait,
+.contact-modal > section,
+.modal-backdrop,
+.toast {
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+.mobile-menu nav a,
+.menu-close,
+.theme-popover button,
+.contact-options > a,
+.contact-options > button,
+.repo-head button,
+.back-top {
+  transition:
+    transform 180ms var(--ease),
+    background-color 180ms var(--ease),
+    border-color 180ms var(--ease),
+    color 180ms var(--ease),
+    opacity 180ms var(--ease);
+}
+
+.mobile-menu nav a:active,
+.menu-close:active,
+.theme-popover button:active,
+.contact-options > a:active,
+.contact-options > button:active,
+.repo-head button:active,
+.button:active,
+.text-button:active {
+  transform: scale(.975);
 }
 
 @keyframes hero-transform-in {
@@ -14,6 +77,11 @@ footer {
 
 @keyframes portrait-transform-in {
   from { transform: translate3d(0, 16px, 0) scale(.985); }
+  to { transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes mobile-chip-settle {
+  from { transform: translate3d(0, 10px, 0) scale(.98); }
   to { transform: translate3d(0, 0, 0) scale(1); }
 }
 
@@ -33,59 +101,57 @@ footer {
   }
 }
 
+@media (hover: hover) {
+  .mobile-menu nav a:hover {
+    color: var(--accent);
+    transform: translate3d(8px, 0, 0);
+  }
+
+  .menu-close:hover,
+  .repo-head button:hover,
+  .theme-popover button:hover {
+    border-color: var(--line2);
+    transform: translate3d(0, -2px, 0);
+  }
+}
+
 @media (max-width: 760px) {
   .site-header {
-    background: var(--bg2);
+    background: color-mix(in srgb, var(--bg2) 96%, transparent);
     backdrop-filter: none;
   }
 
   .portrait-label {
-    background: var(--bg2);
+    background: color-mix(in srgb, var(--bg2) 94%, transparent);
     backdrop-filter: none;
-  }
-
-  .availability,
-  .hero h1,
-  .hero-copy > p,
-  .hero-actions,
-  .hero-meta {
-    animation-duration: 320ms !important;
-    animation-delay: 0ms !important;
-  }
-
-  .portrait-stage {
-    animation-duration: 380ms !important;
-    animation-delay: 40ms !important;
   }
 
   .section,
   .education-section,
   .contact,
   footer {
+    contain: layout paint style;
     contain-intrinsic-size: auto 620px;
   }
-}
 
-
-/* Final mobile render budget */
-.capability-strip {
-  content-visibility: auto;
-  contain-intrinsic-size: 58px;
-}
-
-@media (max-width: 760px) {
   body {
     background: var(--bg);
     text-rendering: auto;
   }
 
-  .availability,
-  .hero h1,
-  .hero-copy > p,
-  .hero-actions,
-  .hero-meta,
-  .portrait-stage,
-  .float-chip,
+  .hero-grid-bg {
+    opacity: .22;
+  }
+
+  .portrait-orbit {
+    display: none;
+  }
+
+  .portrait-frame,
+  .float-chip {
+    box-shadow: none;
+  }
+
   .capability-strip > div,
   .scroll-cue .icon,
   .profile-skeleton i,
@@ -93,15 +159,58 @@ footer {
     animation: none !important;
   }
 
-  .hero-grid-bg { opacity: .22; }
-  .portrait-orbit { display: none; }
-  .portrait-frame,
-  .float-chip { box-shadow: none; }
+  .mobile-menu nav a {
+    min-height: 70px;
+  }
 
-  .section,
-  .education-section,
-  .contact,
-  footer {
-    contain: layout paint style;
+  .mobile-menu-inner {
+    padding-bottom: max(38px, env(safe-area-inset-bottom));
+  }
+
+  .contact-modal {
+    padding-top: max(18px, env(safe-area-inset-top));
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .availability,
+    .hero h1,
+    .hero-copy > p,
+    .hero-actions,
+    .hero-meta {
+      animation: hero-transform-in 300ms var(--ease) both !important;
+    }
+
+    .hero h1 { animation-delay: 35ms !important; }
+    .hero-copy > p { animation-delay: 70ms !important; }
+    .hero-actions { animation-delay: 105ms !important; }
+    .hero-meta { animation-delay: 140ms !important; }
+
+    .portrait-stage {
+      animation: portrait-transform-in 400ms 85ms var(--ease) both !important;
+    }
+
+    .float-chip {
+      animation: mobile-chip-settle 320ms 180ms var(--ease) both !important;
+    }
+  }
+}
+
+@media (max-width: 420px) {
+  .float-chip {
+    max-width: 46vw;
+    white-space: nowrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-menu nav a,
+  .menu-close,
+  .theme-popover button,
+  .contact-options > a,
+  .contact-options > button,
+  .repo-head button,
+  .back-top {
+    transition: none;
   }
 }
