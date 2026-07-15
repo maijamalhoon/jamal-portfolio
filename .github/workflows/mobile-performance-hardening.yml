@@ -1,0 +1,331 @@
+name: Verified mobile performance hardening
+
+on:
+  push:
+    paths:
+      - .github/PERFORMANCE_HARDENING
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Apply mobile startup patches
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          path = Path("src/components/portfolio-page.tsx")
+          text = path.read_text()
+
+          text = text.replace(
+              'import Image from "next/image";',
+              'import dynamic from "next/dynamic";\nimport Image from "next/image";',
+              1,
+          )
+          text = text.replace('import Lenis from "lenis";\n', '', 1)
+          text = text.replace('import GitHubLive from "@/components/github-live";\n', '', 1)
+          text = text.replace(
+              '\nconst iconMap = {',
+              '''
+          const GitHubLive = dynamic(() => import("@/components/github-live"), {
+            ssr: false,
+            loading: () => null,
+          });
+
+          const iconMap = {''',
+              1,
+          )
+
+          smooth_scroll = '''function SmoothScroll() {
+            const reduceMotion = useReducedMotion();
+
+            useEffect(() => {
+              const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
+              const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
+              if (reduceMotion || coarsePointer || saveData) return;
+
+              let cancelled = false;
+              let frame = 0;
+              let lenis: { raf: (time: number) => void; destroy: () => void } | null = null;
+              const timer = window.setTimeout(() => {
+                void import("lenis").then(({ default: Lenis }) => {
+                  if (cancelled) return;
+                  lenis = new Lenis({ duration: 1.05, smoothWheel: true, wheelMultiplier: 0.9, touchMultiplier: 1.2 });
+                  const raf = (time: number) => {
+                    lenis?.raf(time);
+                    frame = window.requestAnimationFrame(raf);
+                  };
+                  frame = window.requestAnimationFrame(raf);
+                });
+              }, 1000);
+
+              return () => {
+                cancelled = true;
+                window.clearTimeout(timer);
+                window.cancelAnimationFrame(frame);
+                lenis?.destroy();
+              };
+            }, [reduceMotion]);
+
+            return null;
+          }'''
+          text, count = re.subn(
+              r'function SmoothScroll\(\) \{.*?\n\}\n\nfunction CursorAura',
+              smooth_scroll + '\n\nfunction CursorAura',
+              text,
+              count=1,
+              flags=re.S,
+          )
+          if count != 1:
+              raise SystemExit("SmoothScroll replacement failed")
+
+          hero = '''function Hero({ onOpenContact }: { onOpenContact: () => void }) {
+            return (
+              <section className="hero" id="home">
+                <div className="hero-grid" aria-hidden />
+                <div className="hero-copy">
+                  <div className="availability-pill hero-enter hero-enter-one">
+                    <span className="availability-dot" />
+                    Karachi, Pakistan · Accounting & finance
+                  </div>
+
+                  <h1>
+                    <span className="hero-line hero-enter hero-enter-two">Numbers with</span>
+                    <span className="hero-line hero-line-accent hero-enter hero-enter-three">
+                      operational intelligence.
+                    </span>
+                  </h1>
+
+                  <p className="hero-intro hero-enter hero-enter-four">
+                    I’m Jamal Yaqoob — an accounts professional and computer science student building precise finance
+                    operations, reliable systems and thoughtful digital products.
+                  </p>
+
+                  <div className="hero-actions hero-enter hero-enter-five">
+                    <MagneticLink href="#work" className="button button-primary">
+                      Explore selected work <ArrowDownRight size={18} />
+                    </MagneticLink>
+                    <MagneticLink href={portfolioPaths.resumePdf} className="button button-secondary" download>
+                      Download résumé <Download size={17} />
+                    </MagneticLink>
+                    <button type="button" className="hero-contact-link" onClick={onOpenContact}>
+                      Contact options
+                    </button>
+                  </div>
+
+                  <div className="hero-meta">
+                    <div><span>Current role</span><strong>Assistant Accountant</strong></div>
+                    <div><span>Focus</span><strong>Finance operations + systems</strong></div>
+                  </div>
+                </div>
+
+                <div className="portrait-stage hero-enter hero-enter-portrait">
+                  <div className="portrait-orbit orbit-one" />
+                  <div className="portrait-orbit orbit-two" />
+                  <div className="portrait-frame">
+                    <Image
+                      src="https://avatars.githubusercontent.com/u/150429791?v=4"
+                      alt="Portrait of Jamal Yaqoob"
+                      fill
+                      priority
+                      fetchPriority="high"
+                      sizes="(max-width: 900px) 84vw, 38vw"
+                    />
+                    <div className="portrait-glass"><Sparkles size={18} /><span>Accuracy in every layer</span></div>
+                  </div>
+                  <div className="floating-chip chip-one"><ReceiptText size={17} />Reconciliation</div>
+                  <div className="floating-chip chip-two"><Code2 size={17} />Systems thinking</div>
+                </div>
+
+                <a className="scroll-cue" href="#about" aria-label="Scroll to about section">
+                  <span>Scroll to discover</span><ArrowDownRight size={18} />
+                </a>
+              </section>
+            );
+          }'''
+          text, count = re.subn(
+              r'function Hero\(\{ onOpenContact \}: \{ onOpenContact: \(\) => void \}\) \{.*?\n\}\n\nfunction SignalMarquee',
+              hero + '\n\nfunction SignalMarquee',
+              text,
+              count=1,
+              flags=re.S,
+          )
+          if count != 1:
+              raise SystemExit("Hero replacement failed")
+
+          deferred = '''function DeferredGitHubLive() {
+            const hostRef = useRef<HTMLDivElement>(null);
+            const [ready, setReady] = useState(false);
+
+            useEffect(() => {
+              const host = hostRef.current;
+              if (!host) return;
+              if (!("IntersectionObserver" in window)) {
+                setReady(true);
+                return;
+              }
+              const observer = new IntersectionObserver(
+                (entries) => {
+                  if (entries.some((entry) => entry.isIntersecting)) {
+                    setReady(true);
+                    observer.disconnect();
+                  }
+                },
+                { rootMargin: "800px 0px" },
+              );
+              observer.observe(host);
+              return () => observer.disconnect();
+            }, []);
+
+            return (
+              <div ref={hostRef} id="github" className="deferred-github-host">
+                {ready ? (
+                  <GitHubLive />
+                ) : (
+                  <section className="section github-live-section github-live-placeholder" aria-labelledby="github-placeholder-title">
+                    <div className="section-heading">
+                      <div className="section-kicker"><span>05</span><span>Professional presence</span></div>
+                      <h2 id="github-placeholder-title">Live proof of work, ready as you approach.</h2>
+                    </div>
+                    <div className="github-placeholder-card" aria-hidden><span /><span /><span /></div>
+                  </section>
+                )}
+              </div>
+            );
+          }
+
+          function SignalMarquee'''
+          text = text.replace('function SignalMarquee', deferred, 1)
+          render_needle = '          <GitHubLive />\n          <Education />'
+          if render_needle not in text:
+              raise SystemExit("GitHub render location not found")
+          text = text.replace(render_needle, '          <DeferredGitHubLive />\n          <Education />', 1)
+          path.write_text(text)
+
+          github_path = Path("src/components/github-live.tsx")
+          github_text = github_path.read_text().replace('id="github"', 'id="github-content"', 1)
+          github_path.write_text(github_text)
+
+          css_path = Path("src/app/styles/performance.css")
+          css = css_path.read_text()
+          css += '''
+
+          /* Visible-first hero motion and deferred live-profile hydration. */
+          .hero-enter { will-change: transform; }
+          .deferred-github-host { min-height: 620px; scroll-margin-top: 112px; }
+          .github-live-placeholder { min-height: 600px; }
+          .github-placeholder-card {
+            min-height: 350px;
+            display: grid;
+            align-content: center;
+            gap: 18px;
+            padding: clamp(28px, 6vw, 64px);
+            border: 1px solid var(--line);
+            border-radius: 28px;
+            background: radial-gradient(circle at 25% 10%, var(--glow), transparent 18rem), var(--surface);
+            box-shadow: var(--shadow);
+          }
+          .github-placeholder-card span {
+            display: block;
+            height: 18px;
+            border-radius: 999px;
+            background: color-mix(in srgb, var(--accent) 11%, var(--surface-strong));
+          }
+          .github-placeholder-card span:nth-child(1) { width: 42%; }
+          .github-placeholder-card span:nth-child(2) { width: 82%; }
+          .github-placeholder-card span:nth-child(3) { width: 64%; }
+
+          @keyframes hero-visible-arrival {
+            from { transform: translate3d(0, 14px, 0) scale(0.994); }
+            to { transform: translate3d(0, 0, 0) scale(1); }
+          }
+          @keyframes hero-portrait-arrival {
+            from { transform: translate3d(0, 16px, 0) scale(0.98) rotate(0.5deg); }
+            to { transform: translate3d(0, 0, 0) scale(1) rotate(0); }
+          }
+          @media (prefers-reduced-motion: no-preference) {
+            .hero-enter { animation: hero-visible-arrival 620ms var(--ease-premium) both; }
+            .hero-enter-two { animation-delay: 45ms; }
+            .hero-enter-three { animation-delay: 85ms; }
+            .hero-enter-four { animation-delay: 130ms; }
+            .hero-enter-five { animation-delay: 180ms; }
+            .hero-enter-portrait { animation-name: hero-portrait-arrival; animation-duration: 760ms; animation-delay: 90ms; }
+          }
+          @media (max-width: 700px) {
+            .deferred-github-host { min-height: 500px; scroll-margin-top: 88px; }
+            .github-live-placeholder { min-height: 480px; }
+            .github-placeholder-card { min-height: 270px; border-radius: 22px; }
+            .hero-enter { animation-duration: 460ms; }
+          }
+          @media (prefers-reduced-motion: reduce), (prefers-reduced-data: reduce) {
+            .hero-enter { animation: none !important; will-change: auto; }
+          }
+          '''
+          css_path.write_text(css)
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Verify source and production build
+        env:
+          GITHUB_ACTIONS: "true"
+          NEXT_PUBLIC_SITE_URL: https://maijamalhoon.github.io/jamal-portfolio
+        run: npm run check
+
+      - name: Start production preview
+        run: |
+          npm start > /tmp/portfolio-server.log 2>&1 &
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:3000/jamal-portfolio/ > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/portfolio-server.log
+          exit 1
+
+      - name: Install Lighthouse browser
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.55.0 lighthouse@12.8.2
+          npx playwright install --with-deps chromium
+
+      - name: Verify mobile quality
+        shell: bash
+        run: |
+          CHROME_PATH="$(node -e "const { chromium } = require('@playwright/test'); process.stdout.write(chromium.executablePath())")"
+          npx lighthouse http://127.0.0.1:3000/jamal-portfolio/ --quiet \
+            --chrome-path="$CHROME_PATH" --chrome-flags="--headless --no-sandbox" \
+            --only-categories=performance,accessibility,best-practices,seo \
+            --output=json --output-path=/tmp/lighthouse-mobile.json
+          node <<'NODE'
+          const fs = require('node:fs');
+          const report = JSON.parse(fs.readFileSync('/tmp/lighthouse-mobile.json', 'utf8'));
+          const values = Object.fromEntries(Object.entries(report.categories).map(([key, value]) => [key, Math.round(value.score * 100)]));
+          fs.writeFileSync('PERFORMANCE_RESULT.md', `# Mobile performance hardening\n\n- Performance: ${values.performance}\n- Accessibility: ${values.accessibility}\n- Best Practices: ${values['best-practices']}\n- SEO: ${values.seo}\n`);
+          if (values.performance < 55 || values.accessibility < 95 || values['best-practices'] < 90 || values.seo < 95) process.exit(1);
+          NODE
+
+      - name: Commit verified optimization
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/PERFORMANCE_HARDENING .github/workflows/mobile-performance-hardening.yml PERFORMANCE_DIAGNOSTIC.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "perf: improve mobile startup without changing visual identity"
+          git pull --rebase origin main
+          git push
