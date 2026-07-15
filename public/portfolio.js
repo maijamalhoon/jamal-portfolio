@@ -5,12 +5,41 @@
   const body = document.body;
   const themeNames = { noir: 'Noir', cobalt: 'Cobalt', ember: 'Ember', ivory: 'Ivory' };
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let previousFocus = null;
+  const canAnimate = !reduceMotion && typeof Element.prototype.animate === 'function';
+  let menuFocus = null;
+  let modalFocus = null;
   let toastTimer = 0;
   let githubLoaded = false;
   let scrollFrame = 0;
+  let resizeFrame = 0;
+  let sectionMetrics = [];
+  let profileTop = Number.POSITIVE_INFINITY;
 
   const one = (selector, root = document) => root.querySelector(selector);
+  const all = (selector, root = document) => [...root.querySelectorAll(selector)];
+
+  const runAnimation = (node, frames, options) => {
+    if (!canAnimate || !(node instanceof Element)) return null;
+    node.getAnimations().forEach((animation) => animation.cancel());
+    return node.animate(frames, { fill: 'both', easing: 'cubic-bezier(.2,.8,.2,1)', ...options });
+  };
+
+  const afterAnimation = (animation, callback) => {
+    if (!animation) { callback(); return; }
+    let completed = false;
+    const finish = () => {
+      if (completed) return;
+      completed = true;
+      callback();
+    };
+    animation.finished.then(finish).catch(finish);
+  };
+
+  const syncOverlayState = () => {
+    const menuOpen = one('[data-mobile-menu]')?.hidden === false;
+    const modalOpen = one('[data-contact-modal]')?.hidden === false;
+    body.classList.toggle('overlay-open', Boolean(menuOpen || modalOpen));
+  };
 
   const showToast = (message) => {
     const node = one('[data-toast]');
@@ -18,8 +47,12 @@
     const text = one('span', node);
     if (text) text.textContent = message;
     node.hidden = false;
+    runAnimation(node, [{ opacity: 0, transform: 'translate3d(-50%,10px,0) scale(.98)' }, { opacity: 1, transform: 'translate3d(-50%,0,0) scale(1)' }], { duration: 180 });
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => { node.hidden = true; }, 2200);
+    toastTimer = setTimeout(() => {
+      const animation = runAnimation(node, [{ opacity: 1 }, { opacity: 0 }], { duration: 140 });
+      afterAnimation(animation, () => { node.hidden = true; });
+    }, 2200);
   };
 
   const copyText = async (value, label) => {
@@ -41,22 +74,51 @@
   const setMenu = (open) => {
     const menu = one('[data-mobile-menu]');
     const trigger = one('[data-menu-open]');
-    if (!menu) return;
-    menu.hidden = !open;
-    trigger?.setAttribute('aria-expanded', String(open));
-    body.style.overflow = open ? 'hidden' : '';
-    if (open) setTimeout(() => one('[data-menu-close]')?.focus(), 0);
-    else trigger?.focus();
+    if (!menu || menu.hidden === !open) return;
+
+    if (open) {
+      menuFocus = document.activeElement;
+      menu.hidden = false;
+      trigger?.setAttribute('aria-expanded', 'true');
+      syncOverlayState();
+      runAnimation(menu, [{ opacity: 0 }, { opacity: 1 }], { duration: 180 });
+      runAnimation(one('.mobile-menu-inner', menu), [{ transform: 'translate3d(0,-14px,0)' }, { transform: 'translate3d(0,0,0)' }], { duration: 260 });
+      runAnimation(one('.menu-portrait', menu), [{ transform: 'translate3d(18px,10px,0) scale(1.025)' }, { transform: 'translate3d(0,0,0) scale(1)' }], { duration: 420 });
+      setTimeout(() => one('[data-menu-close]', menu)?.focus(), 40);
+      return;
+    }
+
+    trigger?.setAttribute('aria-expanded', 'false');
+    const animation = runAnimation(menu, [{ opacity: 1 }, { opacity: 0 }], { duration: 150 });
+    afterAnimation(animation, () => {
+      menu.hidden = true;
+      syncOverlayState();
+      if (menuFocus instanceof HTMLElement) menuFocus.focus();
+      else trigger?.focus();
+    });
   };
 
   const setModal = (open) => {
     const modal = one('[data-contact-modal]');
-    if (!modal) return;
-    if (open) previousFocus = document.activeElement;
-    modal.hidden = !open;
-    body.style.overflow = open ? 'hidden' : '';
-    if (open) setTimeout(() => one('.modal-head [data-contact-close]', modal)?.focus(), 0);
-    else if (previousFocus instanceof HTMLElement) previousFocus.focus();
+    if (!modal || modal.hidden === !open) return;
+
+    if (open) {
+      modalFocus = document.activeElement;
+      modal.hidden = false;
+      syncOverlayState();
+      runAnimation(one('.modal-backdrop', modal), [{ opacity: 0 }, { opacity: 1 }], { duration: 180 });
+      runAnimation(one('section', modal), [{ opacity: 0, transform: 'translate3d(0,16px,0) scale(.985)' }, { opacity: 1, transform: 'translate3d(0,0,0) scale(1)' }], { duration: 240 });
+      setTimeout(() => one('.modal-head [data-contact-close]', modal)?.focus(), 40);
+      return;
+    }
+
+    const panelAnimation = runAnimation(one('section', modal), [{ opacity: 1, transform: 'translate3d(0,0,0) scale(1)' }, { opacity: 0, transform: 'translate3d(0,10px,0) scale(.99)' }], { duration: 150 });
+    runAnimation(one('.modal-backdrop', modal), [{ opacity: 1 }, { opacity: 0 }], { duration: 150 });
+    afterAnimation(panelAnimation, () => {
+      modal.hidden = true;
+      syncOverlayState();
+      if (modalFocus instanceof HTMLElement) modalFocus.focus();
+    });
   };
 
   const setTheme = (theme) => {
@@ -67,19 +129,30 @@
     const trigger = one('[data-theme-button]');
     if (label) label.textContent = themeNames[selected];
     trigger?.setAttribute('aria-label', `Choose color theme: ${themeNames[selected]}`);
-    document.querySelectorAll('button[data-theme]').forEach((button) => {
+    all('button[data-theme]').forEach((button) => {
       button.setAttribute('aria-checked', String(button.dataset.theme === selected));
     });
   };
 
-  setTheme(html.dataset.theme || 'noir');
-
-  const closeThemeMenu = () => {
+  const closeThemeMenu = (animated = true) => {
     const menu = one('[data-theme-menu]');
     const trigger = one('[data-theme-button]');
-    if (menu) menu.hidden = true;
     trigger?.setAttribute('aria-expanded', 'false');
+    if (!menu || menu.hidden) return;
+    const animation = animated ? runAnimation(menu, [{ opacity: 1, transform: 'translate3d(0,0,0) scale(1)' }, { opacity: 0, transform: 'translate3d(0,-6px,0) scale(.98)' }], { duration: 110 }) : null;
+    afterAnimation(animation, () => { menu.hidden = true; });
   };
+
+  const openThemeMenu = () => {
+    const menu = one('[data-theme-menu]');
+    const trigger = one('[data-theme-button]');
+    if (!menu) return;
+    menu.hidden = false;
+    trigger?.setAttribute('aria-expanded', 'true');
+    runAnimation(menu, [{ opacity: 0, transform: 'translate3d(0,-8px,0) scale(.98)' }, { opacity: 1, transform: 'translate3d(0,0,0) scale(1)' }], { duration: 160 });
+  };
+
+  setTheme(html.dataset.theme || 'noir');
 
   document.addEventListener('click', (event) => {
     const target = event.target instanceof Element ? event.target : null;
@@ -88,10 +161,8 @@
     const themeTrigger = target.closest('[data-theme-button]');
     if (themeTrigger) {
       const menu = one('[data-theme-menu]');
-      if (!menu) return;
-      const opening = menu.hidden;
-      menu.hidden = !opening;
-      themeTrigger.setAttribute('aria-expanded', String(opening));
+      if (menu?.hidden) openThemeMenu();
+      else closeThemeMenu();
       return;
     }
 
@@ -126,13 +197,27 @@
 
     const themeMenu = one('[data-theme-menu]');
     if (themeMenu && !themeMenu.hidden && !themeMenu.contains(target)) closeThemeMenu();
-  }, { passive: false });
+  });
+
+  const trapFocus = (event, container) => {
+    if (event.key !== 'Tab' || !(container instanceof Element)) return;
+    const focusable = all('a[href],button:not([disabled]),[tabindex]:not([tabindex="-1"])', container).filter((node) => !node.hidden && node.getAttribute('aria-hidden') !== 'true');
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  };
 
   document.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape') return;
     const modal = one('[data-contact-modal]');
     const menu = one('[data-mobile-menu]');
     const themes = one('[data-theme-menu]');
+
+    if (modal && !modal.hidden) trapFocus(event, modal);
+    else if (menu && !menu.hidden) trapFocus(event, menu);
+
+    if (event.key !== 'Escape') return;
     if (modal && !modal.hidden) setModal(false);
     else if (menu && !menu.hidden) setMenu(false);
     else if (themes && !themes.hidden) closeThemeMenu();
@@ -175,23 +260,35 @@
     }
   }
 
+  const refreshSectionMetrics = () => {
+    const links = all('.desktop-nav a');
+    sectionMetrics = links.map((link) => {
+      const href = link.getAttribute('href');
+      const section = href ? one(href) : null;
+      return section ? { href, top: section.offsetTop, link } : null;
+    }).filter(Boolean);
+    const profileSection = one('[data-github-section]');
+    profileTop = profileSection ? profileSection.offsetTop : Number.POSITIVE_INFINITY;
+  };
+
   const activateScrollFeatures = () => {
     const backTop = one('[data-back-top]');
     if (backTop) backTop.classList.toggle('visible', scrollY > 720);
 
-    const profileSection = one('[data-github-section]');
-    if (profileSection && profileSection.getBoundingClientRect().top < innerHeight + 800) void loadGithub();
+    if (profileTop < scrollY + innerHeight + 800) void loadGithub();
 
-    const links = document.querySelectorAll('.desktop-nav a');
-    let current = '';
-    links.forEach((link) => {
-      const section = one(link.getAttribute('href'));
-      if (section && section.getBoundingClientRect().top <= innerHeight * 0.42) current = link.getAttribute('href');
+    const marker = scrollY + innerHeight * 0.42;
+    let current = sectionMetrics[0]?.href || '';
+    sectionMetrics.forEach((section) => { if (section.top <= marker) current = section.href; });
+    sectionMetrics.forEach((section) => {
+      if (section.href === current) section.link.setAttribute('aria-current', 'page');
+      else section.link.removeAttribute('aria-current');
     });
-    links.forEach((link) => {
-      if (link.getAttribute('href') === current) link.setAttribute('aria-current', 'page');
-      else link.removeAttribute('aria-current');
-    });
+  };
+
+  const refreshLayout = () => {
+    refreshSectionMetrics();
+    activateScrollFeatures();
   };
 
   addEventListener('scroll', () => {
@@ -201,4 +298,14 @@
       activateScrollFeatures();
     });
   }, { passive: true });
+
+  addEventListener('resize', () => {
+    if (resizeFrame) return;
+    resizeFrame = requestAnimationFrame(() => {
+      resizeFrame = 0;
+      refreshLayout();
+    });
+  }, { passive: true });
+
+  requestAnimationFrame(refreshLayout);
 })();
