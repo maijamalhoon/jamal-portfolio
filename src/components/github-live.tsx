@@ -4,18 +4,31 @@ import Image from "next/image";
 import { motion } from "motion/react";
 import {
   ArrowUpRight,
+  BadgeCheck,
   BookOpenText,
+  BriefcaseBusiness,
+  Check,
+  ClipboardCopy,
+  Download,
   GitFork,
+  GraduationCap,
   MapPin,
   RefreshCw,
   Star,
   Users,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { basePath } from "@/lib/site";
 
 const GITHUB_USER = "maijamalhoon";
-const CACHE_KEY = "jamal-github-live-v2";
+const LINKEDIN_URL = "https://pk.linkedin.com/in/jamalarain-it";
+const CURRENT_PORTFOLIO_REPOSITORY = `${GITHUB_USER}/jamal-portfolio`.toLowerCase();
+const CACHE_KEY = "jamal-github-live-v3";
 const CACHE_TTL = 15 * 60 * 1000;
+
+const portfolioPaths = {
+  resumePdf: `${basePath}/Jamal_Yaqoob_Resume.pdf`,
+};
 
 type GitHubProfile = {
   login: string;
@@ -83,22 +96,6 @@ const fallbackRepos: GitHubRepo[] = [
     pushed_at: "2026-07-01T00:00:00Z",
     topics: ["finance", "nextjs", "supabase"],
   },
-  {
-    id: 1300849584,
-    name: "jamal-portfolio",
-    full_name: `${GITHUB_USER}/jamal-portfolio`,
-    html_url: `https://github.com/${GITHUB_USER}/jamal-portfolio`,
-    homepage: null,
-    description: "Animated accounting, finance and systems portfolio.",
-    language: "TypeScript",
-    stargazers_count: 0,
-    forks_count: 0,
-    fork: false,
-    archived: false,
-    updated_at: "2026-07-14T00:00:00Z",
-    pushed_at: "2026-07-14T00:00:00Z",
-    topics: ["portfolio", "nextjs", "motion"],
-  },
 ];
 
 function GitHubMark({ size = 22 }: { size?: number }) {
@@ -108,6 +105,14 @@ function GitHubMark({ size = 22 }: { size?: number }) {
         fill="currentColor"
         d="M12 2C6.48 2 2 6.58 2 12.23c0 4.52 2.87 8.35 6.84 9.71.5.1.68-.22.68-.49 0-.24-.01-1.05-.01-1.9-2.78.62-3.37-1.21-3.37-1.21-.45-1.18-1.11-1.49-1.11-1.49-.91-.64.07-.62.07-.62 1 .07 1.53 1.06 1.53 1.06.89 1.56 2.34 1.11 2.91.85.09-.66.35-1.11.64-1.37-2.22-.26-4.56-1.14-4.56-5.06 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.71 0 0 .84-.28 2.75 1.05A9.3 9.3 0 0 1 12 6.66c.85 0 1.71.12 2.51.34 1.91-1.33 2.75-1.05 2.75-1.05.55 1.41.2 2.45.1 2.71.64.72 1.03 1.63 1.03 2.75 0 3.93-2.34 4.8-4.57 5.05.36.32.68.95.68 1.91 0 1.38-.01 2.49-.01 2.83 0 .27.18.59.69.49A10.24 10.24 0 0 0 22 12.23C22 6.58 17.52 2 12 2Z"
       />
+    </svg>
+  );
+}
+
+function LinkedInMark({ size = 22 }: { size?: number }) {
+  return (
+    <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M6.5 8.25H3.25V21H6.5V8.25ZM4.88 3C3.84 3 3 3.84 3 4.88s.84 1.87 1.88 1.87 1.87-.83 1.87-1.87S5.92 3 4.88 3ZM21 13.7c0-3.83-2.04-5.61-4.77-5.61-2.2 0-3.18 1.21-3.73 2.06v-1.9H9.25V21h3.25v-6.31c0-1.66.31-3.27 2.37-3.27 2.03 0 2.06 1.9 2.06 3.38V21H21v-7.3Z" />
     </svg>
   );
 }
@@ -132,7 +137,12 @@ function formatUpdated(value: string) {
 
 function normalizeRepos(repos: GitHubRepo[]) {
   return repos
-    .filter((repo) => !repo.fork && !repo.archived)
+    .filter(
+      (repo) =>
+        !repo.fork &&
+        !repo.archived &&
+        repo.full_name.toLowerCase() !== CURRENT_PORTFOLIO_REPOSITORY,
+    )
     .sort((a, b) => new Date(b.pushed_at).getTime() - new Date(a.pushed_at).getTime());
 }
 
@@ -144,6 +154,8 @@ export default function GitHubLive() {
   });
   const [state, setState] = useState<LoadState>("loading");
   const [refreshing, setRefreshing] = useState(false);
+  const [linkedinCopied, setLinkedinCopied] = useState(false);
+  const copiedTimer = useRef<number | null>(null);
 
   const load = useCallback(async (force = false) => {
     const cached = readCache();
@@ -184,12 +196,38 @@ export default function GitHubLive() {
     }
   }, []);
 
+  const copyLinkedIn = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(LINKEDIN_URL);
+    } catch {
+      const textArea = document.createElement("textarea");
+      textArea.value = LINKEDIN_URL;
+      textArea.setAttribute("readonly", "");
+      textArea.style.position = "fixed";
+      textArea.style.opacity = "0";
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      textArea.remove();
+    }
+    setLinkedinCopied(true);
+    if (copiedTimer.current) window.clearTimeout(copiedTimer.current);
+    copiedTimer.current = window.setTimeout(() => setLinkedinCopied(false), 2200);
+  }, []);
+
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
       void load(false);
     });
     return () => window.cancelAnimationFrame(frame);
   }, [load]);
+
+  useEffect(
+    () => () => {
+      if (copiedTimer.current) window.clearTimeout(copiedTimer.current);
+    },
+    [],
+  );
 
   const statusCopy = useMemo(() => {
     if (state === "live") return "Live from GitHub";
@@ -201,91 +239,147 @@ export default function GitHubLive() {
   return (
     <section className="section github-live-section" id="github" aria-labelledby="github-live-title">
       <div className="section-heading">
-        <div className="section-kicker"><span>05</span><span>Live GitHub</span></div>
-        <h2 id="github-live-title">Public work that stays current without rebuilding the portfolio.</h2>
+        <div className="section-kicker"><span>05</span><span>Professional presence</span></div>
+        <h2 id="github-live-title">Live proof of work, backed by a clear professional profile.</h2>
       </div>
 
       <div className="github-live-shell">
-        <motion.article
-          className="github-profile-card"
-          initial={{ opacity: 0, y: 32 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-12%" }}
-          transition={{ duration: 0.65 }}
-        >
-          <div className="github-profile-topline">
-            <span className={`github-sync-state is-${state}`}><i />{statusCopy}</span>
-            <button type="button" onClick={() => void load(true)} disabled={refreshing} aria-label="Refresh GitHub information">
-              <RefreshCw size={16} className={refreshing ? "is-spinning" : ""} />
-              Refresh
-            </button>
-          </div>
-
-          <div className="github-profile-main">
-            <Image
-              src={snapshot.profile.avatar_url}
-              alt={`${snapshot.profile.name ?? snapshot.profile.login} on GitHub`}
-              width={164}
-              height={164}
-              sizes="82px"
-              unoptimized
-            />
-            <div>
-              <span>@{snapshot.profile.login}</span>
-              <h3>{snapshot.profile.name ?? "Jamal Yaqoob"}</h3>
-              <p>{snapshot.profile.bio ?? "Accounting, finance and systems."}</p>
+        <div className="professional-profile-rail">
+          <motion.article
+            className="github-profile-card"
+            initial={{ opacity: 0, x: -28 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: "-12%" }}
+            transition={{ duration: 0.65 }}
+          >
+            <div className="github-profile-topline">
+              <span className={`github-sync-state is-${state}`}><i />{statusCopy}</span>
+              <button type="button" onClick={() => void load(true)} disabled={refreshing} aria-label="Refresh GitHub information">
+                <RefreshCw size={16} className={refreshing ? "is-spinning" : ""} />
+                Refresh
+              </button>
             </div>
+
+            <div className="github-profile-main">
+              <Image
+                src={snapshot.profile.avatar_url}
+                alt={`${snapshot.profile.name ?? snapshot.profile.login} on GitHub`}
+                width={164}
+                height={164}
+                sizes="82px"
+                unoptimized
+              />
+              <div>
+                <span>@{snapshot.profile.login}</span>
+                <h3>{snapshot.profile.name ?? "Jamal Yaqoob"}</h3>
+                <p>{snapshot.profile.bio ?? "Accounting, finance and systems."}</p>
+              </div>
+            </div>
+
+            <div className="github-profile-meta">
+              <span><BookOpenText size={17} /><strong>{snapshot.repos.length}</strong> featured repositories</span>
+              <span><Users size={17} /><strong>{snapshot.profile.followers}</strong> followers</span>
+              <span><MapPin size={17} />{snapshot.profile.location ?? "Karachi, Pakistan"}</span>
+            </div>
+
+            <a className="github-profile-link" href={snapshot.profile.html_url} target="_blank" rel="noreferrer">
+              <GitHubMark size={19} /> Open full GitHub profile <ArrowUpRight size={17} />
+            </a>
+          </motion.article>
+
+          <motion.article
+            className="linkedin-profile-card"
+            initial={{ opacity: 0, x: -28 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: "-12%" }}
+            transition={{ duration: 0.65, delay: 0.08 }}
+          >
+            <div className="linkedin-profile-topline">
+              <span><LinkedInMark size={18} /> LinkedIn profile</span>
+              <span className="linkedin-verified"><BadgeCheck size={17} /> Professional</span>
+            </div>
+
+            <div className="linkedin-profile-copy">
+              <span>Verified destination</span>
+              <h3>Jamal Yaqoob</h3>
+              <p>Assistant Accountant · Toyota Society Motors</p>
+            </div>
+
+            <div className="linkedin-signal-list">
+              <span><BriefcaseBusiness size={16} /> Finance operations</span>
+              <span><GraduationCap size={16} /> Computer Science</span>
+              <span><MapPin size={16} /> Karachi, Pakistan</span>
+            </div>
+
+            <div className="linkedin-profile-actions">
+              <a href={LINKEDIN_URL} target="_blank" rel="noreferrer">
+                Open LinkedIn <ArrowUpRight size={16} />
+              </a>
+              <button type="button" onClick={() => void copyLinkedIn()} aria-label="Copy LinkedIn profile link">
+                {linkedinCopied ? <Check size={16} /> : <ClipboardCopy size={16} />}
+                {linkedinCopied ? "Copied" : "Copy link"}
+              </button>
+              <a href={portfolioPaths.resumePdf} download>
+                Résumé <Download size={16} />
+              </a>
+            </div>
+          </motion.article>
+        </div>
+
+        <div className="github-work-column">
+          <motion.div
+            className="github-work-summary"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.55 }}
+          >
+            <div>
+              <span>Curated public work</span>
+              <strong>{snapshot.repos.length.toString().padStart(2, "0")}</strong>
+            </div>
+            <p>The portfolio repository is intentionally excluded, keeping this feed focused on separate products and proof of work.</p>
+          </motion.div>
+
+          <div className="github-repo-grid" aria-live="polite">
+            {snapshot.repos.map((repo, index) => (
+              <motion.article
+                className="github-repo-card"
+                key={repo.id}
+                initial={{ opacity: 0, y: 34, rotateX: 4 }}
+                whileInView={{ opacity: 1, y: 0, rotateX: 0 }}
+                viewport={{ once: true, margin: "-8%" }}
+                transition={{ duration: 0.62, delay: Math.min(index, 5) * 0.07 }}
+              >
+                <div className="github-repo-head">
+                  <span><GitHubMark size={18} /> Featured repository</span>
+                  <a href={repo.html_url} target="_blank" rel="noreferrer" aria-label={`Open ${repo.name} on GitHub`}>
+                    <ArrowUpRight size={18} />
+                  </a>
+                </div>
+                <h3>{repo.name}</h3>
+                <p>{repo.description ?? "Public source code and project history available on GitHub."}</p>
+                <div className="github-repo-topics">
+                  {repo.language ? <span>{repo.language}</span> : null}
+                  {(repo.topics ?? []).slice(0, 3).map((topic) => <span key={topic}>{topic}</span>)}
+                </div>
+                <div className="github-repo-foot">
+                  <span><Star size={15} />{repo.stargazers_count}</span>
+                  <span><GitFork size={15} />{repo.forks_count}</span>
+                  <time dateTime={repo.updated_at}>{formatUpdated(repo.updated_at)}</time>
+                </div>
+                <div className="github-repo-actions">
+                  <a href={repo.html_url} target="_blank" rel="noreferrer">Source <ArrowUpRight size={16} /></a>
+                  {repo.homepage ? <a href={repo.homepage} target="_blank" rel="noreferrer">Live project <ArrowUpRight size={16} /></a> : null}
+                </div>
+              </motion.article>
+            ))}
           </div>
-
-          <div className="github-profile-meta">
-            <span><BookOpenText size={17} /><strong>{snapshot.profile.public_repos}</strong> public repositories</span>
-            <span><Users size={17} /><strong>{snapshot.profile.followers}</strong> followers</span>
-            <span><MapPin size={17} />{snapshot.profile.location ?? "Karachi, Pakistan"}</span>
-          </div>
-
-          <a className="github-profile-link" href={snapshot.profile.html_url} target="_blank" rel="noreferrer">
-            <GitHubMark size={19} /> Open full GitHub profile <ArrowUpRight size={17} />
-          </a>
-        </motion.article>
-
-        <div className="github-repo-grid" aria-live="polite">
-          {snapshot.repos.map((repo, index) => (
-            <motion.article
-              className="github-repo-card"
-              key={repo.id}
-              initial={{ opacity: 0, y: 28 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-8%" }}
-              transition={{ duration: 0.55, delay: Math.min(index, 5) * 0.06 }}
-            >
-              <div className="github-repo-head">
-                <span><GitHubMark size={18} /> Public repository</span>
-                <a href={repo.html_url} target="_blank" rel="noreferrer" aria-label={`Open ${repo.name} on GitHub`}>
-                  <ArrowUpRight size={18} />
-                </a>
-              </div>
-              <h3>{repo.name}</h3>
-              <p>{repo.description ?? "Public source code and project history available on GitHub."}</p>
-              <div className="github-repo-topics">
-                {repo.language ? <span>{repo.language}</span> : null}
-                {(repo.topics ?? []).slice(0, 3).map((topic) => <span key={topic}>{topic}</span>)}
-              </div>
-              <div className="github-repo-foot">
-                <span><Star size={15} />{repo.stargazers_count}</span>
-                <span><GitFork size={15} />{repo.forks_count}</span>
-                <time dateTime={repo.updated_at}>{formatUpdated(repo.updated_at)}</time>
-              </div>
-              <div className="github-repo-actions">
-                <a href={repo.html_url} target="_blank" rel="noreferrer">Source <ArrowUpRight size={16} /></a>
-                {repo.homepage ? <a href={repo.homepage} target="_blank" rel="noreferrer">Live project <ArrowUpRight size={16} /></a> : null}
-              </div>
-            </motion.article>
-          ))}
         </div>
       </div>
 
       <p className="github-sync-note">
-        Public profile changes and public repository additions or removals are reflected automatically. Private repositories stay private.
+        GitHub profile edits and public repository additions or removals update automatically. LinkedIn remains a verified direct profile link, while private repositories stay private.
       </p>
     </section>
   );
