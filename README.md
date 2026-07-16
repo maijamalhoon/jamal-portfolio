@@ -4,9 +4,9 @@ A production-grade portfolio for **Jamal Yaqoob**, an accounting and finance pro
 
 ## Live website
 
-**Verified permanent public link:** https://maijamalhoon.github.io/jamal-portfolio/
+**Official permanent public link:** https://maijamalhoon.github.io/jamal-portfolio/
 
-The repository is also connected to the Jamal Portfolio project on Vercel, and successful deployments are created automatically from `main`.
+This GitHub Pages address is the single canonical portfolio URL. Old or deleted Vercel aliases such as `jamal-portfolio-lovat.vercel.app` and `olio-lovat.vercel.app` are not active portfolio links.
 
 ## What makes it different
 
@@ -51,4 +51,4 @@ Then open `http://localhost:3000`.
 
 ## Deployment
 
-The repository is compatible with Vercel and GitHub Pages. Every push to `main` runs CI and publishes the static export through the included GitHub Actions workflows.
+Every push to `main` runs CI and publishes the static export to the official GitHub Pages URL through the included GitHub Actions workflows. The code remains compatible with Vercel, but a Vercel address should only be shared after a new active Vercel project and production alias have been verified.
