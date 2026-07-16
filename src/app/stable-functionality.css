@@ -1,0 +1,359 @@
+/* Scoped enhancements only. These styles do not override the core portfolio layout. */
+
+body {
+  font-family: "Manrope Variable", Manrope, ui-sans-serif, system-ui, sans-serif;
+}
+
+h1,
+h2,
+h3,
+.brand-copy strong,
+.mobile-menu nav strong,
+.contact-mark span {
+  font-family: "Space Grotesk Variable", "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+}
+
+.availability {
+  flex-wrap: wrap;
+}
+
+.jy-live-time {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.jy-project-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: -12px 0 28px;
+  padding: 9px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface);
+}
+
+.jy-project-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.jy-project-filter {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 850;
+  transition: background 0.2s var(--ease), color 0.2s var(--ease), transform 0.2s var(--ease);
+}
+
+.jy-project-filter:hover {
+  color: var(--text);
+  background: var(--surface2);
+  transform: translateY(-1px);
+}
+
+.jy-project-filter[aria-pressed="true"] {
+  color: var(--ink);
+  background: var(--accent);
+}
+
+.jy-project-toolbar > span {
+  padding-right: 9px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.jy-project-toolbar > span b {
+  color: var(--text);
+}
+
+.project-card[hidden] {
+  display: none !important;
+}
+
+.jy-tools {
+  width: min(1180px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: clamp(90px, 10vw, 150px) 0;
+}
+
+.jy-tools-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+  gap: clamp(22px, 4vw, 48px);
+  padding: clamp(22px, 4vw, 44px);
+  border: 1px solid var(--line2);
+  border-radius: 28px;
+  background: linear-gradient(145deg, var(--surface), var(--bg2));
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.jy-tool-copy > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 11px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--accent);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.jy-tool-copy h3 {
+  max-width: 12ch;
+  margin: 20px 0 12px;
+  font-size: clamp(2rem, 4.5vw, 4.4rem);
+  line-height: 0.96;
+  letter-spacing: -0.055em;
+}
+
+.jy-tool-copy > p {
+  max-width: 650px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.72;
+}
+
+.jy-reconcile-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.jy-reconcile-form label {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.jy-reconcile-form label > span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.jy-input-wrap {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--bg2);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.jy-input-wrap:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--glow);
+}
+
+.jy-input-wrap small {
+  color: var(--accent);
+  font-size: 0.64rem;
+  font-weight: 900;
+}
+
+.jy-input-wrap input {
+  width: 100%;
+  min-width: 0;
+  height: 48px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font: 760 0.9rem/1 "Manrope Variable", sans-serif;
+}
+
+.jy-form-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 4px;
+}
+
+.jy-form-actions button {
+  min-height: 44px;
+  padding: 0 15px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--surface2);
+  cursor: pointer;
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.jy-form-actions button:first-child {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--ink);
+}
+
+.jy-tool-result {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: clamp(20px, 3vw, 30px);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--bg);
+}
+
+.jy-result-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.jy-result-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--soft);
+  white-space: nowrap;
+}
+
+.jy-result-status::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 5px var(--glow);
+}
+
+.jy-result-status[data-state="review"]::before {
+  background: #ffb45a;
+  box-shadow: 0 0 0 5px rgba(255, 180, 90, 0.14);
+}
+
+.jy-result-total {
+  margin: 30px 0 24px;
+}
+
+.jy-result-total span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.jy-result-total strong {
+  display: block;
+  max-width: 100%;
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+  color: var(--accent);
+  font-size: clamp(2rem, 5vw, 4.7rem);
+  line-height: 1;
+  letter-spacing: -0.055em;
+  font-variant-numeric: tabular-nums;
+}
+
+.jy-result-grid {
+  display: grid;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.jy-result-grid div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 0;
+  border-top: 1px solid var(--line);
+}
+
+.jy-result-grid span {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.jy-result-grid strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-align: right;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 820px) {
+  .jy-tools-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .jy-tool-copy h3 {
+    max-width: 15ch;
+  }
+}
+
+@media (max-width: 620px) {
+  .jy-project-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .jy-project-toolbar > span {
+    padding: 3px 5px 5px;
+  }
+
+  .jy-project-filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .jy-project-filter {
+    width: 100%;
+  }
+
+  .jy-tools {
+    width: min(100% - 24px, 1180px);
+  }
+
+  .jy-tools-shell {
+    padding: 18px;
+    border-radius: 22px;
+  }
+
+  .jy-reconcile-form {
+    grid-template-columns: 1fr;
+  }
+
+  .jy-result-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jy-project-filter {
+    transition: none;
+  }
+}
