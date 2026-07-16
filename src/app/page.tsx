@@ -13,8 +13,6 @@ import {
   Download,
   ExternalLink,
   FileText,
-  Github,
-  Linkedin,
   Mail,
   MapPin,
   Menu,
@@ -52,6 +50,14 @@ const projectCategories = [
   "product live finance",
   "systems private payroll",
   "operations professional finance",
+] as const;
+
+const commandLinks = [
+  { href: "#about", title: "About Jamal", description: "Story, values and background", icon: Briefcase },
+  { href: "#experience", title: "Experience", description: "Roles and operational responsibilities", icon: Clock },
+  { href: "#work", title: "Selected work", description: "Products, systems and case studies", icon: BarChart3 },
+  { href: "#lab", title: "Reconciliation lab", description: "Interactive finance calculation", icon: Calculator },
+  { href: "#profiles", title: "Professional profiles", description: "LinkedIn and live GitHub work", icon: Code },
 ] as const;
 
 function SectionHead({
@@ -353,10 +359,10 @@ export default function Home() {
                   <Phone size={17} aria-hidden="true" /> Call
                 </a>
                 <a href={contact.github} target="_blank" rel="noreferrer">
-                  <Github size={17} aria-hidden="true" /> GitHub
+                  <span className="github-mini" aria-hidden="true">GH</span> GitHub
                 </a>
                 <a href={contact.linkedin} target="_blank" rel="noreferrer">
-                  <Linkedin size={17} aria-hidden="true" /> LinkedIn
+                  <span className="linkedin-mini" aria-hidden="true">in</span> LinkedIn
                 </a>
               </div>
             </div>
@@ -501,7 +507,7 @@ export default function Home() {
                       ) : <span>Private repository</span>}
                       {project.repo ? (
                         <a href={project.repo} target="_blank" rel="noreferrer">
-                          Source <Github size={16} aria-hidden="true" />
+                          Source <Code size={16} aria-hidden="true" />
                         </a>
                       ) : null}
                     </div>
@@ -646,16 +652,10 @@ export default function Home() {
           <div className="command-head"><span id="command-title">Quick explore</span><small>Navigate or run an action</small></div>
           <div className="command-list" data-command-list>
             <p>Navigate</p>
-            {[
-              ["#about", "About Jamal", "Story, values and background", Briefcase],
-              ["#experience", "Experience", "Roles and operational responsibilities", Clock],
-              ["#work", "Selected work", "Products, systems and case studies", BarChart3],
-              ["#lab", "Reconciliation lab", "Interactive finance calculation", Calculator],
-              ["#profiles", "Professional profiles", "LinkedIn and live GitHub work", Github],
-            ].map(([href, title, description, ItemIcon]) => (
-              <a key={String(href)} href={String(href)} data-command-item data-command-keywords={`${title} ${description}`}>
+            {commandLinks.map(({ href, title, description, icon: ItemIcon }) => (
+              <a key={href} href={href} data-command-item data-command-keywords={`${title} ${description}`}>
                 <span><ItemIcon size={18} aria-hidden="true" /></span>
-                <div><strong>{String(title)}</strong><small>{String(description)}</small></div>
+                <div><strong>{title}</strong><small>{description}</small></div>
                 <ArrowRight size={17} aria-hidden="true" />
               </a>
             ))}
@@ -689,8 +689,8 @@ export default function Home() {
             <button type="button" data-copy={contact.email} data-copy-label="Email address"><Copy size={19} aria-hidden="true" /><strong>Copy email</strong><small>{contact.email}</small></button>
             <button type="button" data-copy={contact.phoneValue} data-copy-label="Phone number"><Phone size={19} aria-hidden="true" /><strong>Copy phone</strong><small>{contact.phoneDisplay}</small></button>
             <a href={`mailto:${contact.email}`}><Mail size={19} aria-hidden="true" /><strong>Open email app</strong><small>Start a new message</small></a>
-            <a href={contact.linkedin} target="_blank" rel="noreferrer"><Linkedin size={19} aria-hidden="true" /><strong>Open LinkedIn</strong><small>Professional profile</small></a>
-            <a href={contact.github} target="_blank" rel="noreferrer"><Github size={19} aria-hidden="true" /><strong>Open GitHub</strong><small>Projects and source</small></a>
+            <a href={contact.linkedin} target="_blank" rel="noreferrer"><span className="linkedin-mini" aria-hidden="true">in</span><strong>Open LinkedIn</strong><small>Professional profile</small></a>
+            <a href={contact.github} target="_blank" rel="noreferrer"><span className="github-mini" aria-hidden="true">GH</span><strong>Open GitHub</strong><small>Projects and source</small></a>
             <a href={`${basePath}/Jamal_Yaqoob.vcf`} download><Download size={19} aria-hidden="true" /><strong>Save contact</strong><small>Download vCard</small></a>
           </div>
         </section>
